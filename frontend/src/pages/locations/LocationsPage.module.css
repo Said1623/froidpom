@@ -1,0 +1,8 @@
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.retourInfo {
+  background: var(--c-surface2); border-radius: var(--radius);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.retourInfo div { display: flex; justify-content: space-between; font-size: 13px; color: var(--c-text2); }
+.retourInfo span { color: var(--c-text3); }

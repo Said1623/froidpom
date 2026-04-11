@@ -1,0 +1,10 @@
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.filters {
+  margin-bottom: 16px;
+  max-width: 260px;
+}

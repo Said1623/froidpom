@@ -1,0 +1,45 @@
+.tabs {
+  display: flex; gap: 4px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 24px;
+}
+.tab {
+  padding: 7px 18px; border: none; border-radius: 7px;
+  font-size: 13px; font-weight: 600; color: var(--c-text2);
+  background: transparent; transition: all .15s;
+}
+.tab:hover { color: var(--c-text); }
+.tabActive { background: var(--c-primary-glow); color: var(--c-primary) !important; }
+
+.globalRow {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 14px; margin-bottom: 22px;
+}
+.globalCard { text-align: center; }
+.globalLabel { font-size: 11px; color: var(--c-text3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.globalVal { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: var(--c-text); }
+.globalSub { font-size: 12px; color: var(--c-text3); margin-top: 4px; }
+
+.chambresGrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.chambreCard { }
+.chambreHeader { display: flex; justify-content: space-between; align-items: flex-start; }
+.chambreNom { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+.temp { font-size: 11px; color: var(--c-accent); margin-top: 3px; display: block; }
+.chambreChiffre {
+  font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--c-primary);
+  line-height: 1;
+}
+.chambreChiffre span { font-size: 14px; color: var(--c-text3); }
+.chambreStats {
+  display: flex; gap: 20px; margin-top: 14px;
+  padding-top: 14px; border-top: 1px solid var(--c-border);
+}
+.statLbl { font-size: 10px; color: var(--c-text3); text-transform: uppercase; letter-spacing: .4px; }
+.statVal { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--c-text); margin-top: 2px; }
