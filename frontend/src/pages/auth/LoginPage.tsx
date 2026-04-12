@@ -13,7 +13,7 @@ export default function LoginPage() {
   if (!form.username || !form.password) return;
   setLoading(true);
   try {
-    const response = await fetch('http://localhost:3000/api/auth/login', {
+    const response = await fetch('https://froidpom.onrender.com/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: form.username, password: form.password })
