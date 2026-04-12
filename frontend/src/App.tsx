@@ -14,7 +14,7 @@ import StockPage from './pages/stock/StockPage';
 
 function LoginPage() {
   async function handleLogin() {
-    const r = await fetch('http://localhost:3000/api/auth/login', {
+    const r = await fetch('https://froidpom.onrender.com/api/auth/login', {    
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'admin123' })
@@ -32,7 +32,7 @@ function LoginPage() {
     const form = e.currentTarget;
     const username = (form.elements.namedItem('username') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
-    const r = await fetch('http://localhost:3000/api/auth/login', {
+    const r = await fetch('https://froidpom.onrender.com/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
