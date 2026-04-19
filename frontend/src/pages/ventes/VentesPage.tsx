@@ -158,181 +158,222 @@ function ModalVente({ vente, clients, onClose, onSaved }: {
 }
 
 // ── Saisie groupe ─────────────────────────────────────
-interface GroupeRow { client: Client; quantite: string; ville: string; type: string; prix: string; selected: boolean; done: boolean; error: string; }
-
 function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => void }) {
   const today = new Date().toISOString().split('T')[0];
-  const [dateGroupe, setDateGroupe] = useState(today);
-  const [villeGroupe, setVilleGroupe] = useState('');
-  const [typeGroupe, setTypeGroupe] = useState('');
-  const [prixGroupe, setPrixGroupe] = useState('');
+
+  // Champs communs
+  const [date, setDate] = useState(today);
+  const [quantite, setQuantite] = useState('');
+  const [ville, setVille] = useState('');
+  const [type, setType] = useState('Pomme fruits');
+
+  // Sélection clients
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [progression, setProgression] = useState<{done:number;total:number}|null>(null);
+  const [dones, setDones] = useState<Set<number>>(new Set());
 
-  const [rows, setRows] = useState<GroupeRow[]>(
-    clients.map(c => ({ client: c, quantite: '', ville: '', type: '', prix: '', selected: false, done: false, error: '' }))
+  const clientsFiltres = clients.filter(c =>
+    c.nom.toLowerCase().includes(search.toLowerCase())
   );
 
-  function upd(cid: number, f: keyof GroupeRow, v: any) {
-    setRows(p => p.map(r => r.client.id === cid ? { ...r, [f]: v } : r));
+  function tog(id: number) {
+    setSelected(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
   }
-  function tog(cid: number) { setRows(p => p.map(r => r.client.id === cid ? { ...r, selected: !r.selected } : r)); }
-  function selAll(v: boolean) { setRows(p => p.map(r => r.done ? r : { ...r, selected: v })); }
 
-  function appliquerVille() { setRows(p => p.map(r => r.done ? r : { ...r, ville: villeGroupe })); }
-  function appliquerType() { setRows(p => p.map(r => r.done ? r : { ...r, type: typeGroupe })); }
-  function appliquerPrix() { setRows(p => p.map(r => r.done ? r : { ...r, prix: prixGroupe })); }
+  function selAll() {
+    const ids = clientsFiltres.filter(c => !dones.has(c.id)).map(c => c.id);
+    setSelected(new Set(ids));
+  }
 
-  const selectes = rows.filter(r => r.selected && !r.done && r.quantite && (r.ville || villeGroupe));
-  const totalTonnes = selectes.reduce((s, r) => s + (parseFloat(r.quantite) || 0), 0);
+  function deselAll() { setSelected(new Set()); }
+
+  const selectes = clients.filter(c => selected.has(c.id));
+  const totalTonnes = selectes.length * (parseFloat(quantite) || 0);
+
+  function reset() {
+    setSelected(new Set());
+    setDones(new Set());
+    setQuantite('');
+    setVille('');
+    setType('Pomme fruits');
+    setDate(today);
+  }
 
   async function confirmer() {
-    if (selectes.length === 0) return toast.error('Sélectionner des clients avec quantité et ville');
-    setSaving(true); setProgression({ done: 0, total: selectes.length });
+    if (selected.size === 0) return toast.error('Sélectionner au moins un client');
+    if (!quantite) return toast.error('Saisir la quantité en tonnes');
+    if (!ville) return toast.error('Sélectionner une ville');
+
+    setSaving(true);
+    setProgression({ done: 0, total: selectes.length });
     let ok = 0; let err = 0;
+
     for (let i = 0; i < selectes.length; i++) {
-      const row = selectes[i];
+      const c = selectes[i];
       try {
         await apiVentes('POST', '', {
-          clientId: row.client.id,
-          dateVente: dateGroupe,
-          quantiteTonnes: parseFloat(row.quantite),
-          villeDestinataire: row.ville || villeGroupe,
-          typeMarchandise: row.type || typeGroupe,
-          prixUnitaire: parseFloat(row.prix || prixGroupe) || 0,
+          clientId: c.id,
+          dateVente: date,
+          quantiteTonnes: parseFloat(quantite),
+          villeDestinataire: ville,
+          typeMarchandise: type,
           statut: 'en_cours',
         });
-        upd(row.client.id, 'done', true); ok++;
-      } catch (e: any) { upd(row.client.id, 'error', e?.message || 'Erreur'); err++; }
+        setDones(prev => new Set([...prev, c.id]));
+        ok++;
+      } catch { err++; }
       setProgression({ done: i + 1, total: selectes.length });
     }
-    setSaving(false); setProgression(null); onSaved();
+
+    setSaving(false);
+    setProgression(null);
+    setSelected(new Set());
+    onSaved();
     if (err === 0) toast.success(`✓ ${ok} vente(s) créée(s)`);
     else toast.error(`${ok} OK, ${err} erreur(s)`);
   }
 
-  const rowsFiltres = rows.filter(r => r.client.nom.toLowerCase().includes(search.toLowerCase()));
   const s = { background: 'var(--c-bg2)', border: '1px solid var(--c-border2)', borderRadius: 8, color: 'var(--c-text)', padding: '8px 12px', fontSize: 13, outline: 'none' };
-  const inpS = { background: '#161d35', border: '1px solid rgba(79,142,247,.3)', borderRadius: 6, color: '#e8edf8', padding: '5px 8px', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' as const };
 
   return (
-    <div>
-      {/* Barre contrôle groupe */}
-      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border2)', borderRadius: 12, padding: '16px 20px', marginBottom: 14 }}>
-        <div style={{ fontSize: 12, color: 'var(--c-text2)', fontWeight: 600, marginBottom: 12 }}>⚡ Paramètres communs (appliqués à toute la sélection)</div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--c-text3)', marginBottom: 4 }}>Date</div>
-            <input type="date" value={dateGroupe} onChange={e => setDateGroupe(e.target.value)} style={s} />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--c-text3)', marginBottom: 4 }}>Ville (pour tous)</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <select value={villeGroupe} onChange={e => setVilleGroupe(e.target.value)} style={{ ...s, minWidth: 160 }}>
-                <option value="">-- Ville --</option>
-                {VILLES_MAROC.map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-              <button onClick={appliquerVille} style={{ background: 'rgba(79,142,247,.15)', border: '1px solid rgba(79,142,247,.3)', color: 'var(--c-primary)', borderRadius: 8, padding: '6px 10px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Appliquer</button>
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--c-text3)', marginBottom: 4 }}>Type marchandise</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input type="text" value={typeGroupe} onChange={e => setTypeGroupe(e.target.value)} placeholder="Pommes..." style={{ ...s, width: 120 }} />
-              <button onClick={appliquerType} style={{ background: 'rgba(79,142,247,.15)', border: '1px solid rgba(79,142,247,.3)', color: 'var(--c-primary)', borderRadius: 8, padding: '6px 10px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Appliquer</button>
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--c-text3)', marginBottom: 4 }}>Prix/Tonne (MAD)</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input type="number" value={prixGroupe} onChange={e => setPrixGroupe(e.target.value)} placeholder="0" style={{ ...s, width: 80 }} />
-              <button onClick={appliquerPrix} style={{ background: 'rgba(79,142,247,.15)', border: '1px solid rgba(79,142,247,.3)', color: 'var(--c-primary)', borderRadius: 8, padding: '6px 10px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Appliquer</button>
-            </div>
-          </div>
-          <button onClick={confirmer} disabled={saving || selectes.length === 0}
-            style={{ background: selectes.length > 0 ? 'var(--c-success)' : 'var(--c-surface2)', border: 'none', color: selectes.length > 0 ? '#fff' : 'var(--c-text3)', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: selectes.length > 0 ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
-            {saving ? `Création... ${progression?.done}/${progression?.total}` : `✓ Confirmer (${selectes.length}) — ${totalTonnes.toFixed(2)}T`}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
+
+      {/* ── Colonne gauche : sélection clients ── */}
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
+          1. Sélectionner les clients
+        </div>
+
+        {/* Barre recherche + actions */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+          <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)}
+            style={{ ...s, flex: 1 }} />
+          <button onClick={selAll} style={{ background: 'rgba(79,142,247,.15)', border: '1px solid rgba(79,142,247,.3)', color: 'var(--c-primary)', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            ✓ Tout sélectionner
           </button>
+          <button onClick={deselAll} style={{ background: 'var(--c-bg2)', border: '1px solid var(--c-border)', color: 'var(--c-text2)', borderRadius: 8, padding: '7px 12px', fontSize: 12, cursor: 'pointer' }}>
+            ✕ Vider
+          </button>
+        </div>
+
+        {/* Info sélection */}
+        <div style={{ fontSize: 12, color: 'var(--c-text2)', marginBottom: 8 }}>
+          <strong style={{ color: 'var(--c-primary)' }}>{selected.size}</strong> client(s) sélectionné(s) sur {clients.length}
+        </div>
+
+        {/* Liste clients */}
+        <div style={{ border: '1px solid var(--c-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 480, overflowY: 'auto' }}>
+          {clientsFiltres.map((c, i) => {
+            const isSel = selected.has(c.id);
+            const isDone = dones.has(c.id);
+            return (
+              <div key={c.id}
+                onClick={() => !isDone && tog(c.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 14px',
+                  background: isDone ? 'rgba(46,207,138,.06)' : isSel ? 'rgba(79,142,247,.08)' : i % 2 === 0 ? '' : 'rgba(255,255,255,.01)',
+                  borderBottom: '1px solid var(--c-border)',
+                  cursor: isDone ? 'default' : 'pointer',
+                  transition: 'background .1s',
+                  borderLeft: `3px solid ${isDone ? 'var(--c-success)' : isSel ? 'var(--c-primary)' : 'transparent'}`,
+                }}>
+                <input type="checkbox" checked={isSel || isDone} disabled={isDone}
+                  onChange={() => tog(c.id)}
+                  style={{ width: 15, height: 15, accentColor: isDone ? 'var(--c-success)' : 'var(--c-primary)', cursor: 'pointer' }} />
+                <span style={{ fontWeight: isSel ? 700 : 500, fontSize: 13, flex: 1, color: isDone ? 'var(--c-success)' : 'var(--c-text)' }}>
+                  {c.nom}
+                </span>
+                {isDone && <span style={{ fontSize: 11, color: 'var(--c-success)', fontWeight: 600 }}>✓ Créé</span>}
+              </div>
+            );
+          })}
+          {clientsFiltres.length === 0 && (
+            <div style={{ padding: 30, textAlign: 'center', color: 'var(--c-text3)' }}>Aucun client trouvé</div>
+          )}
         </div>
       </div>
 
-      {/* Résumé sélection */}
-      {selectes.length > 0 && (
-        <div style={{ background: 'rgba(46,207,138,.06)', border: '1px solid rgba(46,207,138,.2)', borderRadius: 10, padding: '10px 16px', marginBottom: 12, display: 'flex', gap: 20, alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, color: 'var(--c-success)' }}>{selectes.length} client(s) sélectionné(s)</div>
-          <div style={{ fontSize: 13, color: 'var(--c-text2)' }}>Total : <strong style={{ color: 'var(--c-success)' }}>{totalTonnes.toFixed(2)} Tonnes</strong></div>
+      {/* ── Colonne droite : formulaire ── */}
+      <div style={{ position: 'sticky', top: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
+          2. Saisir les informations
         </div>
-      )}
 
-      {progression && (
-        <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: 'var(--c-text2)', marginBottom: 6 }}>Création... {progression.done}/{progression.total}</div>
-          <div style={{ background: 'var(--c-bg2)', borderRadius: 20, height: 8, overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 20, background: 'var(--c-success)', width: `${(progression.done / progression.total) * 100}%`, transition: 'width .2s' }} />
+        <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border2)', borderRadius: 14, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Date */}
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Date</div>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ background: '#161d35', border: '1px solid rgba(79,142,247,.3)', borderRadius: 8, color: '#e8edf8', padding: '9px 12px', fontSize: 13, width: '100%', outline: 'none', boxSizing: 'border-box' as const }} />
           </div>
+
+          {/* Quantité */}
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Quantité (Tonnes) *</div>
+            <input type="number" min="0" step="0.01" value={quantite} onChange={e => setQuantite(e.target.value)} placeholder="0.00"
+              style={{ background: '#161d35', border: `1px solid ${quantite ? 'rgba(245,166,35,.6)' : 'rgba(79,142,247,.3)'}`, borderRadius: 8, color: '#e8edf8', padding: '9px 12px', fontSize: 15, fontWeight: 700, width: '100%', outline: 'none', boxSizing: 'border-box' as const }} />
+          </div>
+
+          {/* Ville */}
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Ville destinataire *</div>
+            <select value={ville} onChange={e => setVille(e.target.value)}
+              style={{ background: '#161d35', border: `1px solid ${ville ? 'rgba(79,142,247,.6)' : 'rgba(79,142,247,.3)'}`, borderRadius: 8, color: ville ? '#e8edf8' : '#8fa3cc', padding: '9px 12px', fontSize: 13, width: '100%', outline: 'none' }}>
+              <option value="">-- Sélectionner une ville --</option>
+              {VILLES_MAROC.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+
+          {/* Type marchandise */}
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Type de marchandise</div>
+            <input type="text" value={type} onChange={e => setType(e.target.value)}
+              style={{ background: '#161d35', border: '1px solid rgba(79,142,247,.3)', borderRadius: 8, color: '#e8edf8', padding: '9px 12px', fontSize: 13, width: '100%', outline: 'none', boxSizing: 'border-box' as const }} />
+          </div>
+
+          {/* Résumé */}
+          {selected.size > 0 && quantite && (
+            <div style={{ background: 'rgba(46,207,138,.08)', border: '1px solid rgba(46,207,138,.2)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 12, color: 'var(--c-text2)', marginBottom: 4 }}>Résumé :</div>
+              <div style={{ fontWeight: 700, color: 'var(--c-success)', fontSize: 15 }}>{selected.size} clients × {quantite} T</div>
+              <div style={{ fontSize: 13, color: 'var(--c-text2)', marginTop: 2 }}>= <strong style={{ color: 'var(--c-warning)' }}>{totalTonnes.toFixed(2)} Tonnes</strong> au total</div>
+              {ville && <div style={{ fontSize: 12, color: 'var(--c-text3)', marginTop: 4 }}>→ {ville} · {type}</div>}
+            </div>
+          )}
+
+          {/* Progression */}
+          {progression && (
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--c-text2)', marginBottom: 6 }}>Création {progression.done}/{progression.total}...</div>
+              <div style={{ background: 'var(--c-bg2)', borderRadius: 20, height: 8 }}>
+                <div style={{ height: '100%', borderRadius: 20, background: 'var(--c-success)', width: `${(progression.done / progression.total) * 100}%`, transition: 'width .2s' }} />
+              </div>
+            </div>
+          )}
+
+          {/* Boutons */}
+          <button onClick={confirmer} disabled={saving || selected.size === 0 || !quantite || !ville}
+            style={{
+              background: selected.size > 0 && quantite && ville ? 'var(--c-success)' : 'var(--c-surface2)',
+              border: 'none', color: selected.size > 0 && quantite && ville ? '#fff' : 'var(--c-text3)',
+              borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700,
+              cursor: selected.size > 0 && quantite && ville ? 'pointer' : 'not-allowed', width: '100%',
+            }}>
+            {saving ? `Création... ${progression?.done}/${progression?.total}` : `✓ Créer ${selected.size} vente(s)`}
+          </button>
+
+          <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--c-border)', color: 'var(--c-text3)', borderRadius: 10, padding: '8px 0', fontSize: 12, cursor: 'pointer', width: '100%' }}>
+            ↺ Réinitialiser
+          </button>
         </div>
-      )}
-
-      <input placeholder="🔍 Rechercher client..." value={search} onChange={e => setSearch(e.target.value)}
-        style={{ ...s, width: 280, marginBottom: 10 }} />
-
-      <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 10 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
-          <thead>
-            <tr style={{ background: 'var(--c-bg2)' }}>
-              <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--c-border)', width: 36 }}>
-                <input type="checkbox" checked={rowsFiltres.filter(r => !r.done).every(r => r.selected)} onChange={e => selAll(e.target.checked)} style={{ accentColor: 'var(--c-success)', width: 15, height: 15 }} />
-              </th>
-              {['Client', 'Quantité (T)', 'Ville destinataire', 'Type', 'Prix/T', 'Montant', ''].map(h => (
-                <th key={h} style={{ padding: '10px 8px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rowsFiltres.map(row => {
-              const montant = (parseFloat(row.quantite) || 0) * (parseFloat(row.prix || prixGroupe) || 0);
-              if (row.done) return (
-                <tr key={row.client.id} style={{ background: 'rgba(46,207,138,.04)', borderBottom: '1px solid var(--c-border)' }}>
-                  <td style={{ padding: '10px 12px' }}>✅</td>
-                  <td style={{ padding: '10px', fontWeight: 600, color: 'var(--c-success)' }}>{row.client.nom}</td>
-                  <td colSpan={5} style={{ padding: '10px', color: 'var(--c-text3)', fontSize: 12, fontStyle: 'italic' }}>{row.quantite}T → {row.ville || villeGroupe}</td>
-                  <td style={{ padding: '10px' }}><button onClick={() => upd(row.client.id, 'done', false)} style={{ background: 'rgba(79,142,247,.1)', border: '1px solid rgba(79,142,247,.25)', color: 'var(--c-primary)', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>↩</button></td>
-                </tr>
-              );
-              return (
-                <tr key={row.client.id} style={{ borderBottom: '1px solid var(--c-border)', background: row.selected ? 'rgba(46,207,138,.04)' : '' }}>
-                  <td style={{ padding: '7px 12px' }} onClick={() => tog(row.client.id)}>
-                    <input type="checkbox" checked={row.selected} onChange={() => tog(row.client.id)} style={{ accentColor: 'var(--c-success)', width: 15, height: 15, cursor: 'pointer' }} />
-                  </td>
-                  <td style={{ padding: '7px 8px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }} onClick={() => tog(row.client.id)}>{row.client.nom}</td>
-                  <td style={{ padding: '5px 6px' }}>
-                    <input type="number" min="0" step="0.01" value={row.quantite} onChange={e => upd(row.client.id, 'quantite', e.target.value)} placeholder="0.00"
-                      style={{ ...inpS, width: 90, border: `1px solid ${row.quantite ? 'rgba(46,207,138,.5)' : 'rgba(79,142,247,.3)'}` }} />
-                  </td>
-                  <td style={{ padding: '5px 6px' }}>
-                    <select value={row.ville} onChange={e => upd(row.client.id, 'ville', e.target.value)} style={{ ...inpS, width: 150 }}>
-                      <option value="">{villeGroupe || '-- Ville --'}</option>
-                      {VILLES_MAROC.map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </td>
-                  <td style={{ padding: '5px 6px' }}>
-                    <input type="text" value={row.type} onChange={e => upd(row.client.id, 'type', e.target.value)} placeholder={typeGroupe || 'Type...'} style={{ ...inpS, width: 100 }} />
-                  </td>
-                  <td style={{ padding: '5px 6px' }}>
-                    <input type="number" value={row.prix} onChange={e => upd(row.client.id, 'prix', e.target.value)} placeholder={prixGroupe || '0'} style={{ ...inpS, width: 70 }} />
-                  </td>
-                  <td style={{ padding: '7px 8px', fontWeight: 700, color: montant > 0 ? 'var(--c-accent)' : 'var(--c-text3)', fontSize: 13, whiteSpace: 'nowrap' }}>
-                    {montant > 0 ? `${montant.toLocaleString('fr-FR')} MAD` : '—'}
-                  </td>
-                  <td style={{ padding: '5px 8px' }}>
-                    {row.error && <span style={{ fontSize: 10, color: 'var(--c-danger)' }}>⚠ {row.error}</span>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   );
