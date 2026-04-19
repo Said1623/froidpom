@@ -401,7 +401,6 @@ function exportPDF(ventes: any[], titre = 'Suivi Vente Marchandise') {
   const kpis = [
     { label: 'NB VENTES', val: String(ventes.length) },
     { label: 'TOTAL TONNES', val: `${totalT.toFixed(2)} T` },
-    { label: 'MONTANT TOTAL', val: `${Math.round(totalM).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} MAD` },
   ];
   const kw = (W - 28) / kpis.length;
   kpis.forEach((k, i) => {
@@ -503,11 +502,10 @@ export default function VentesPage() {
       {tab === 'liste' && (
         <>
           {/* KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
             {[
               { label: 'Total ventes', val: String(filtres.length), color: 'var(--c-primary)' },
               { label: 'Total Tonnes', val: `${totalTonnes.toFixed(2)} T`, color: 'var(--c-warning)' },
-              { label: 'Montant total', val: `${Math.round(totalMontant).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} MAD`, color: 'var(--c-success)' },
             ].map(k => (
               <div key={k.label} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 12, padding: '14px 18px' }}>
                 <div style={{ fontSize: 11, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>{k.label}</div>
