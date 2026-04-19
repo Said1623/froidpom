@@ -53,7 +53,7 @@ function ModalVente({ vente, clients, onClose, onSaved }: {
     typeMarchandise: vente?.typeMarchandise || '',
     prixUnitaire: vente?.prixUnitaire || '',
     transporteur: vente?.transporteur || '',
-    statut: vente?.statut || 'en_cours',
+    statut: vente?.statut || 'livre',
     notes: vente?.notes || '',
   });
   const [saving, setSaving] = useState(false);
@@ -223,7 +223,7 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
           quantiteTonnes: parseFloat(quantite),
           villeDestinataire: ville,
           typeMarchandise: type,
-          statut: 'en_cours',
+          statut: 'livre',
         });
         setDones(prev => new Set([...prev, c.id]));
         ok++;
@@ -416,21 +416,15 @@ function exportPDF(ventes: any[], titre = 'Suivi Vente Marchandise') {
 
   autoTable(doc, {
     startY: y + 24,
-    head: [['Date', 'Client', 'Quantite (T)', 'Ville', 'Type', 'Prix/T', 'Montant', 'Transporteur', 'Statut']],
-    body: ventes.map(v => {
-      const montant = (Number(v.quantiteTonnes) || 0) * (Number(v.prixUnitaire) || 0);
-      return [
-        v.dateVente ? new Date(v.dateVente).toLocaleDateString('fr-FR') : '-',
-        v.client?.nom || '-',
-        (Number(v.quantiteTonnes) || 0).toFixed(2),
-        v.villeDestinataire || '-',
-        v.typeMarchandise || '-',
-        v.prixUnitaire ? `${Number(v.prixUnitaire)} MAD` : '-',
-        montant > 0 ? `${Math.round(montant).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} MAD` : '-',
-        v.transporteur || '-',
-        v.statut || '-',
-      ];
-    }),
+    head: [['Date', 'Client', 'Quantite (T)', 'Ville', 'Type', 'Statut']],
+    body: ventes.map(v => [
+      v.dateVente ? new Date(v.dateVente).toLocaleDateString('fr-FR') : '-',
+      v.client?.nom || '-',
+      (Number(v.quantiteTonnes) || 0).toFixed(2),
+      v.villeDestinataire || '-',
+      v.typeMarchandise || '-',
+      v.statut || 'livre',
+    ]),
     styles: { fontSize: 8, cellPadding: 3 },
     headStyles: { fillColor: [15, 22, 40], textColor: [232, 237, 248], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -555,15 +549,14 @@ export default function VentesPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
                 <tr style={{ background: 'var(--c-bg2)' }}>
-                  {['Date', 'Client', 'Quantité', 'Ville', 'Type', 'Prix/T', 'Montant', 'Transporteur', 'Statut', ''].map(h => (
+                  {['Date', 'Client', 'Quantité', 'Ville', 'Type', 'Statut', ''].map(h => (
                     <th key={h} style={{ padding: '11px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtres.length === 0 && <tr><td colSpan={10} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>Aucune vente</td></tr>}
+                {filtres.length === 0 && <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>Aucune vente</td></tr>}
                 {filtres.map((v, i) => {
-                  const montant = (Number(v.quantiteTonnes) || 0) * (Number(v.prixUnitaire) || 0);
                   return (
                     <tr key={v.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
                       <td style={{ padding: '10px 10px', fontSize: 13 }}>{v.dateVente ? new Date(v.dateVente).toLocaleDateString('fr-FR') : '-'}</td>
@@ -573,11 +566,6 @@ export default function VentesPage() {
                         <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>{v.villeDestinataire}</span>
                       </td>
                       <td style={{ padding: '10px 10px', color: 'var(--c-text2)' }}>{v.typeMarchandise || '-'}</td>
-                      <td style={{ padding: '10px 10px', color: 'var(--c-text2)' }}>{v.prixUnitaire ? `${Number(v.prixUnitaire)} MAD` : '-'}</td>
-                      <td style={{ padding: '10px 10px', fontWeight: 700, color: 'var(--c-accent)', whiteSpace: 'nowrap' }}>
-                        {montant > 0 ? `${Math.round(montant).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} MAD` : '-'}
-                      </td>
-                      <td style={{ padding: '10px 10px', color: 'var(--c-text2)', fontSize: 12 }}>{v.transporteur || '-'}</td>
                       <td style={{ padding: '10px 10px' }}>
                         <span style={{ color: statutColor(v.statut), fontWeight: 600, fontSize: 12 }}>{statutLabel(v.statut)}</span>
                       </td>
