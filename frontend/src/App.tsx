@@ -11,6 +11,7 @@ import SortiesPage from './pages/sorties/SortiesPage';
 import PaiementsPage from './pages/paiements/PaiementsPage';
 import LocationsPage from './pages/locations/LocationsPage';
 import StockPage from './pages/stock/StockPage';
+import VentesPage from './pages/ventes/VentesPage';
 
 function LoginPage() {
   async function handleLogin() {
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="paiements" element={<PaiementsPage />} />
         <Route path="locations" element={<LocationsPage />} />
         <Route path="stock" element={<StockPage />} />
+        <Route path="ventes" element={<VentesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

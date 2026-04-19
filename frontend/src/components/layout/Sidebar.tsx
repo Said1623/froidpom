@@ -12,6 +12,7 @@ const NAV = [
   { to: '/paiements',   icon: '€',  label: 'Paiements' },
   { to: '/locations',   icon: '📦', label: 'Locations' },
   { to: '/stock',       icon: '≡',  label: 'Suivi Stock' },
+  { to: '/ventes',      icon: '🚚', label: 'Suivi Ventes' },
 ];
 
 export function Sidebar() {
