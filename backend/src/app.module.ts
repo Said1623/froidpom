@@ -14,6 +14,7 @@ import { LocationsModule } from './modules/locations/locations.module';
 import { StockModule } from './modules/stock/stock.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { VentesModule } from './modules/ventes/ventes.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AuthModule } from './modules/auth/auth.module';
     StockModule,
     DashboardModule,
     AuthModule,
+    VentesModule,
   ],
 })
 export class AppModule { }
