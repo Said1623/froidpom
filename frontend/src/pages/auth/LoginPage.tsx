@@ -1,39 +1,41 @@
 import { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
 import { Button, Input } from '../../components/ui/UI';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
-  const { login } = useAuth();
   const [form, setForm] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  if (!form.username || !form.password) return;
-  setLoading(true);
-  try {
-    const response = await fetch('https://froidpom.onrender.com/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: form.username, password: form.password })
-    });
-    const data = await response.json();
-    console.log('data:', data);
-    if (data.access_token) {
-      localStorage.setItem('froidpom_token', data.access_token);
-      localStorage.setItem('froidpom_user', JSON.stringify(data.user));
-      window.location.href = '/';
-    } else {
-      toast.error('Erreur de connexion');
+    e.preventDefault();
+    if (!form.username || !form.password) return;
+    setLoading(true);
+    try {
+      const BASE = import.meta.env.VITE_API_URL || 'https://froidpom.onrender.com/api';
+      const response = await fetch(`${BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: form.username, password: form.password })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        toast.error(err?.message || `Erreur ${response.status}`);
+        return;
+      }
+      const data = await response.json();
+      if (data.access_token) {
+        localStorage.setItem('froidpom_token', data.access_token);
+        localStorage.setItem('froidpom_user', JSON.stringify(data.user));
+        window.location.href = '/';
+      } else {
+        toast.error('Identifiants incorrects');
+      }
+    } catch {
+      toast.error('Serveur inaccessible — réessayez dans 30 secondes');
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    toast.error('Erreur serveur');
-  } finally {
-    setLoading(false);
   }
-}
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--c-bg)' }}>

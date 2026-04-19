@@ -1,9 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { VentesService } from './ventes.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('ventes')
-@UseGuards(JwtAuthGuard)
 export class VentesController {
   constructor(private svc: VentesService) {}
   @Get() findAll() { return this.svc.findAll(); }
