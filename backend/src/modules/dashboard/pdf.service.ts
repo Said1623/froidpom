@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import * as PDFDocument from 'pdfkit';
+import * as PDFDocumentLib from 'pdfkit';
+const PDFDocument = (PDFDocumentLib as any).default || PDFDocumentLib;
 import { Response } from 'express';
 
 @Injectable()
