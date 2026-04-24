@@ -310,7 +310,12 @@ export default function PaiementsPage() {
   const [filterClient, setFilterClient] = useState('');
 
   const totalPaye = paiements?.reduce((s, p) => s + Number(p.montant), 0) || 0;
-  const totalReservations = reservations?.reduce((s, r) => s + Number(r.montantTotal), 0) || 0;
+  const totalReservations = reservations?.reduce((s, r) => {
+    const bois  = (Number((r as any).nbCaissesBois) || 0) * (Number((r as any).prixUnitaireBois) || 0);
+    const plast = (Number((r as any).nbCaissesPластique) || 0) * (Number((r as any).prixUnitairePlastique) || 0);
+    const tran  = (Number((r as any).nbCaissesTranger) || 0) * (Number((r as any).prixUnitaireTranger) || 0);
+    return s + bois + plast + tran;
+  }, 0) || 0;
   const resteAPayer = Math.max(0, totalReservations - totalPaye);
 
   const filtered = filterClient
