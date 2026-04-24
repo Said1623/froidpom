@@ -371,6 +371,61 @@ export default function PaiementsPage() {
             <BtnPdf onClick={() => pdfPaiements(filtered, totalReservations)} label="⬇ Exporter PDF" disabled={!filtered.length} />
           </div>
 
+          {/* Tableau récap par client */}
+          {!filterClient && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text2)', marginBottom: 10 }}>📊 Récapitulatif par client</div>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 10 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--c-bg2)' }}>
+                      {['Client', 'Réservé', 'Encaissé', 'Reste à encaisser'].map(h => (
+                        <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(clients || []).map((c, i) => {
+                      const resaClient = (reservations || []).filter(r => (r as any).client?.id === c.id || (r as any).client_id === c.id);
+                      const montantResa = resaClient.reduce((s, r) => {
+                        const bois  = (Number((r as any).nbCaissesBois) || 0) * (Number((r as any).prixUnitaireBois) || 0);
+                        const plast = (Number((r as any).nbCaissesPластique) || 0) * (Number((r as any).prixUnitairePlastique) || 0);
+                        const tran  = (Number((r as any).nbCaissesTranger) || 0) * (Number((r as any).prixUnitaireTranger) || 0);
+                        return s + bois + plast + tran;
+                      }, 0);
+                      const paiementsClient = (paiements || []).filter(p => p.client.id === c.id);
+                      const montantEncaisse = paiementsClient.reduce((s, p) => s + Number(p.montant), 0);
+                      const reste = Math.max(0, montantResa - montantEncaisse);
+                      if (montantResa === 0 && montantEncaisse === 0) return null;
+                      return (
+                        <tr key={c.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
+                          <td style={{ padding: '10px 14px', fontWeight: 600, fontSize: 13 }}>{c.nom}</td>
+                          <td style={{ padding: '10px 14px', color: 'var(--c-primary)', fontWeight: 600 }}>
+                            {montantResa > 0 ? `${fmt(montantResa)} Dh` : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px', color: 'var(--c-success)', fontWeight: 700 }}>
+                            {montantEncaisse > 0 ? `${fmt(montantEncaisse)} Dh` : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            {reste > 0
+                              ? <span style={{ color: 'var(--c-danger)', fontWeight: 700 }}>{fmt(reste)} Dh</span>
+                              : montantEncaisse > 0
+                                ? <span style={{ color: 'var(--c-success)', fontSize: 12 }}>✓ Soldé</span>
+                                : <span style={{ color: 'var(--c-text3)' }}>—</span>}
+                          </td>
+                        </tr>
+                      );
+                    }).filter(Boolean)}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Historique paiements */}
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text2)', marginBottom: 10 }}>
+            {filterClient ? `Paiements — ${clients?.find(c => c.id === parseInt(filterClient))?.nom}` : '📋 Historique des paiements'}
+          </div>
           <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 10 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
