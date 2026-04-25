@@ -196,7 +196,7 @@ export default function LocationsPage() {
   const { data: locations, loading, refetch } = useFetch<Location[]>(() => locationsApi.getAll());
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
   const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
-  const { isInCampagne } = useCampagne();
+  const { campagneActive, isInCampagne } = useCampagne();
 
   const [tab, setTab] = useState<'session'|'suivi'|'historique'>('session');
   const [dateOp, setDateOp] = useState(new Date().toISOString().split('T')[0]);
@@ -214,7 +214,7 @@ export default function LocationsPage() {
   const clientRows = useMemo<ClientLoc[]>(() => {
     if (!clients || !reservations) return [];
     const resaMap: Record<number, Reservation> = {};
-    reservations.forEach(r => { resaMap[r.client.id] = r; });
+    reservations.filter(r => isInCampagne((r as any).dateReservation)).forEach(r => { resaMap[r.client.id] = r; });
     return clients.filter(c => resaMap[c.id]).map(client => {
       const resa = resaMap[client.id];
       return {
@@ -294,7 +294,7 @@ export default function LocationsPage() {
   const suivi = useMemo(() => {
     if (!clients || !locations) return [];
     return clients.map(client => {
-      const locs = (locations).filter(l => l.client.id === client.id);
+      const locs = (locations).filter(l => l.client.id === client.id && isInCampagne(l.dateLocation));
       // Bois = typeCaisse 'bois' OU null (anciennes locations)
       const boisLocs = locs.filter(l => !l.typeCaisse || l.typeCaisse === 'bois');
       const plastLocs = locs.filter(l => l.typeCaisse === 'plastique');

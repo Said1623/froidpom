@@ -7,6 +7,7 @@ import { BtnPdf } from '../../components/ui/BtnPdf';
 import type { Client } from '../../types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useCampagne } from '../../contexts/CampagneContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -455,6 +456,7 @@ export default function VentesPage() {
   const [filterVille, setFilterVille] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [search, setSearch] = useState('');
+  const { campagneActive, isInCampagne } = useCampagne();
 
   async function loadVentes() {
     setLoading(true);
@@ -476,7 +478,7 @@ export default function VentesPage() {
     const mc = filterClient ? v.client?.id === parseInt(filterClient) : true;
     const mv = filterVille ? v.villeDestinataire === filterVille : true;
     const mst = filterStatut ? v.statut === filterStatut : true;
-    return ms && mc && mv && mst;
+    return ms && mc && mv && mst && isInCampagne(v.dateVente);
   });
 
   const totalTonnes = filtres.reduce((s, v) => s + (Number(v.quantiteTonnes) || 0), 0);
@@ -486,7 +488,7 @@ export default function VentesPage() {
 
   return (
     <div className="fade-in">
-      <PageHeader title="Suivi Vente Marchandise" subtitle={`${ventes.length} vente(s) enregistrée(s)`} />
+      <PageHeader title="Suivi Vente Marchandise" subtitle={`Campagne ${campagneActive} — ${filtres.length} vente(s)`} />
 
       {/* Onglets */}
       <div style={{ display: 'flex', gap: 4, background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 10, padding: 4, width: 'fit-content', marginBottom: 22 }}>
