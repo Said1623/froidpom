@@ -6,6 +6,7 @@ import { reservationsApi, clientsApi } from '../../services';
 import { Button, PageHeader, Spinner } from '../../components/ui/UI';
 import type { Reservation, Client } from '../../types';
 import toast from 'react-hot-toast';
+import { useCampagne } from '../../contexts/CampagneContext';
 
 const STATUTS = [
   { value: 'en_attente', label: 'En attente', color: 'var(--c-warning)' },
@@ -133,11 +134,11 @@ function NewReservationRow({ client, clients, onSaved, onCancel }: {
 export default function ReservationsPage() {
   const { data: reservations, loading: loadingR, refetch } = useFetch<Reservation[]>(() => reservationsApi.getAll());
   const { data: clients, loading: loadingC } = useFetch<Client[]>(() => clientsApi.getAll());
+  const { campagneActive, isInCampagne } = useCampagne();
   const [filterStatut, setFilterStatut] = useState('');
   const [search, setSearch] = useState('');
   const [inlineNew, setInlineNew] = useState<number | null | 'new'>(null);
 
-  // ── Changement de statut en masse ──
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [massStatut, setMassStatut] = useState('confirmee');
   const [applyingMass, setApplyingMass] = useState(false);
@@ -183,8 +184,11 @@ export default function ReservationsPage() {
   const loading = loadingR || loadingC;
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><Spinner size={36} /></div>;
 
+  // ── Filtre campagne sur dateReservation ──
+  const reservationsFiltresCampagne = (reservations || []).filter(r => isInCampagne(r.dateReservation));
+
   const reservationParClient: Record<number, Reservation[]> = {};
-  (reservations || []).forEach(r => {
+  reservationsFiltresCampagne.forEach(r => {
     if (!reservationParClient[r.client.id]) reservationParClient[r.client.id] = [];
     reservationParClient[r.client.id].push(r);
   });
@@ -196,9 +200,8 @@ export default function ReservationsPage() {
     return matchSearch && (filterStatut ? matchStatut : true);
   });
 
-  // Toutes les réservations visibles (pour select-all)
   const toutesReservationsVisibles = clientsFiltres.flatMap(c => reservationParClient[c.id] || []);
-  const totalGlobal = (reservations || []).reduce((s, r) => s + calcTotal(r), 0);
+  const totalGlobal = reservationsFiltresCampagne.reduce((s, r) => s + calcTotal(r), 0);
   const allSelected = toutesReservationsVisibles.length > 0 && toutesReservationsVisibles.every(r => selectedIds.has(r.id));
 
   const HEADERS = ['', 'Client', 'Date', 'Sortie prév.', '🪵 Bois nb', '🪵 Prix', '🧴 Plast. nb', '🧴 Prix', '📦 Tranger nb', '📦 Prix', 'Total', 'Statut', ''];
@@ -207,7 +210,7 @@ export default function ReservationsPage() {
     <div className="fade-in">
       <PageHeader
         title="Réservations"
-        subtitle={`${clients?.length || 0} client(s) — Total: ${totalGlobal.toLocaleString('fr-FR')} MAD`}
+        subtitle={`Campagne ${campagneActive} — ${reservationsFiltresCampagne.length} réservation(s) — Total: ${totalGlobal.toLocaleString('fr-FR')} MAD`}
       />
 
       {/* Filtres */}
@@ -221,11 +224,11 @@ export default function ReservationsPage() {
         </select>
         {(search || filterStatut) && <Button variant="ghost" size="sm" onClick={() => { setSearch(''); setFilterStatut(''); }}>✕</Button>}
         <div style={{ marginLeft: 'auto' }}>
-          <BtnPdf onClick={() => pdfReservations(reservations||[], clients||[])} label="⬇ Exporter PDF" disabled={!reservations?.length} />
+          <BtnPdf onClick={() => pdfReservations(reservationsFiltresCampagne, clients||[])} label="⬇ Exporter PDF" disabled={!reservationsFiltresCampagne.length} />
         </div>
       </div>
 
-      {/* ── Barre changement statut en masse ── */}
+      {/* Barre changement statut en masse */}
       <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border2)', borderRadius: 12, padding: '14px 18px', marginBottom: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, color: 'var(--c-text2)', fontWeight: 600 }}>
           {selectedIds.size > 0 ? `${selectedIds.size} sélectionné(s)` : 'Changer statut en masse :'}
@@ -233,13 +236,13 @@ export default function ReservationsPage() {
         <div style={{ display: 'flex', gap: 6 }}>
           {STATUTS.map(s => (
             <button key={s.value} onClick={() => setMassStatut(s.value)}
-              style={{ padding: '5px 12px', borderRadius: 8, border: massStatut === s.value ? `2px solid ${s.color}` : '1px solid var(--c-border)', background: massStatut === s.value ? `${s.color}22` : 'var(--c-bg2)', color: massStatut === s.value ? s.color : 'var(--c-text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .15s' }}>
+              style={{ padding: '5px 12px', borderRadius: 8, border: massStatut === s.value ? `2px solid ${s.color}` : '1px solid var(--c-border)', background: massStatut === s.value ? `${s.color}22` : 'var(--c-bg2)', color: massStatut === s.value ? s.color : 'var(--c-text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               {s.label}
             </button>
           ))}
         </div>
         <button onClick={appliquerStatutMasse} disabled={selectedIds.size === 0 || applyingMass}
-          style={{ background: selectedIds.size > 0 ? 'var(--c-primary)' : 'var(--c-surface2)', border: 'none', color: selectedIds.size > 0 ? '#fff' : 'var(--c-text3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 700, cursor: selectedIds.size > 0 ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', transition: 'all .15s' }}>
+          style={{ background: selectedIds.size > 0 ? 'var(--c-primary)' : 'var(--c-surface2)', border: 'none', color: selectedIds.size > 0 ? '#fff' : 'var(--c-text3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 700, cursor: selectedIds.size > 0 ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
           {applyingMass ? 'En cours...' : `⚡ Appliquer (${selectedIds.size})`}
         </button>
         {selectedIds.size > 0 && (
@@ -269,13 +272,12 @@ export default function ReservationsPage() {
             </tr>
           </thead>
           <tbody>
-            {clientsFiltres.length === 0 && <tr><td colSpan={13} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>Aucun client</td></tr>}
+            {clientsFiltres.length === 0 && <tr><td colSpan={13} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>Aucune réservation pour la campagne {campagneActive}</td></tr>}
 
             {clientsFiltres.map(client => {
               const reservs = reservationParClient[client.id] || [];
               return (
                 <>
-                  {/* Ligne inline saisie */}
                   {inlineNew === client.id && (
                     <NewReservationRow key={`new-${client.id}`} client={client} clients={clients || []}
                       onSaved={() => { setInlineNew(null); refetch(); }} onCancel={() => setInlineNew(null)} />
@@ -283,12 +285,10 @@ export default function ReservationsPage() {
 
                   {reservs.length > 0 ? reservs.map((r, ri) => (
                     <tr key={r.id} style={{ borderBottom: '1px solid var(--c-border)', background: selectedIds.has(r.id) ? 'rgba(79,142,247,.07)' : ri % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
-                      {/* Checkbox */}
                       <td style={{ padding: '6px 10px' }} onClick={() => toggleSelect(r.id)}>
                         <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)}
                           style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--c-primary)' }} />
                       </td>
-                      {/* Nom */}
                       <td style={{ padding: '8px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
                         {ri === 0 ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -316,10 +316,10 @@ export default function ReservationsPage() {
                       <td style={{ padding: '6px 8px' }}>
                         <div style={{ display: 'flex', gap: 4 }}>
                           {ri === 0 && (
-                            <button onClick={() => setInlineNew(inlineNew === client.id ? null : client.id)} title="Ajouter"
+                            <button onClick={() => setInlineNew(inlineNew === client.id ? null : client.id)}
                               style={{ background: 'rgba(79,142,247,.1)', border: '1px solid rgba(79,142,247,.25)', color: 'var(--c-primary)', borderRadius: 6, width: 24, height: 24, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>+</button>
                           )}
-                          <button onClick={() => handleDelete(r.id, client.nom)} title="Supprimer"
+                          <button onClick={() => handleDelete(r.id, client.nom)}
                             style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 24, height: 24, fontSize: 12, cursor: 'pointer' }}>✕</button>
                         </div>
                       </td>
@@ -329,7 +329,7 @@ export default function ReservationsPage() {
                       <tr key={`empty-${client.id}`} style={{ borderBottom: '1px solid var(--c-border)' }}>
                         <td style={{ padding: '10px 10px' }}></td>
                         <td style={{ padding: '10px 8px', fontWeight: 600, fontSize: 13 }}>{client.nom}</td>
-                        <td colSpan={9} style={{ padding: '10px 8px', color: 'var(--c-text3)', fontSize: 12, fontStyle: 'italic' }}>Aucune réservation</td>
+                        <td colSpan={9} style={{ padding: '10px 8px', color: 'var(--c-text3)', fontSize: 12, fontStyle: 'italic' }}>Aucune réservation pour cette campagne</td>
                         <td colSpan={2} style={{ padding: '8px' }}>
                           <button onClick={() => setInlineNew(client.id)}
                             style={{ background: 'rgba(79,142,247,.12)', border: '1px solid rgba(79,142,247,.3)', color: 'var(--c-primary)', borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>

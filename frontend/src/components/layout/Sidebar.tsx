@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useCampagne } from '../../contexts/CampagneContext';
 import styles from './Sidebar.module.css';
 
 const NAV = [
@@ -18,6 +19,7 @@ const NAV = [
 export function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { campagneActive, setCampagneActive, campagnes } = useCampagne();
 
   function handleLogout() {
     logout();
@@ -32,6 +34,33 @@ export function Sidebar() {
           <div className={styles.brandName}>Froidpom</div>
           <div className={styles.brandSub}>Gestion frigorifique</div>
         </div>
+      </div>
+
+      {/* Sélecteur campagne */}
+      <div style={{ padding: '10px 14px 4px' }}>
+        <div style={{ fontSize: 10, color: 'rgba(140,170,220,.6)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 6 }}>
+          📅 Campagne
+        </div>
+        <select
+          value={campagneActive}
+          onChange={e => setCampagneActive(e.target.value)}
+          style={{
+            width: '100%',
+            background: 'rgba(79,142,247,.15)',
+            border: '1px solid rgba(79,142,247,.4)',
+            borderRadius: 8,
+            color: '#7eb8f7',
+            padding: '7px 10px',
+            fontSize: 13,
+            fontWeight: 700,
+            outline: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          {campagnes.map(c => (
+            <option key={c.label} value={c.label}>{c.label}</option>
+          ))}
+        </select>
       </div>
 
       <nav className={styles.nav}>

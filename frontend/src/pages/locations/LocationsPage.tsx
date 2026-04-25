@@ -8,6 +8,7 @@ import { PageHeader, Spinner } from '../../components/ui/UI';
 import type { Location, Client, Reservation } from '../../types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useCampagne } from '../../contexts/CampagneContext';
 
 // ── LigneRetour Modal ─────────────────────────────────
 function LigneRetour({ emoji, label, color, restant, nb, onNbChange, prix, onPrixChange }: {
@@ -195,6 +196,7 @@ export default function LocationsPage() {
   const { data: locations, loading, refetch } = useFetch<Location[]>(() => locationsApi.getAll());
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
   const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
+  const { isInCampagne } = useCampagne();
 
   const [tab, setTab] = useState<'session'|'suivi'|'historique'>('session');
   const [dateOp, setDateOp] = useState(new Date().toISOString().split('T')[0]);
@@ -314,7 +316,7 @@ export default function LocationsPage() {
   }, [clients, locations]);
 
   const suiviFiltres = suivi.filter(s => (s as any).client.nom.toLowerCase().includes(searchSuivi.toLowerCase()));
-  const filteredLoc = (locations||[]).filter(l => filterClient ? l.client.id===parseInt(filterClient) : true);
+  const filteredLoc = (locations||[]).filter(l => (filterClient ? l.client.id===parseInt(filterClient) : true) && isInCampagne(l.dateLocation));
 
   if (loading) return <div style={{display:'flex',justifyContent:'center',padding:80}}><Spinner size={36}/></div>;
 
@@ -359,7 +361,7 @@ export default function LocationsPage() {
 
       {/* Onglets */}
       <div style={{ display:'flex', gap:4, background:'var(--c-surface)', border:'1px solid var(--c-border)', borderRadius:10, padding:4, width:'fit-content', marginBottom:18 }}>
-        {[{id:'session',label:'⚡ Session location'},{id:'suivi',label:`📊 Suivi client (${suiviFiltres.length})`},{id:'historique',label:`📋 Historique (${(locations||[]).length})`}].map(t => (
+        {[{id:'session',label:'⚡ Session location'},{id:'suivi',label:`📊 Suivi client (${suiviFiltres.length})`},{id:'historique',label:`📋 Historique (${filteredLoc.length})`}].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:7, border:'none', fontSize:13, fontWeight:600, cursor:'pointer', background:tab===t.id?'var(--c-primary-glow)':'transparent', color:tab===t.id?'var(--c-primary)':'var(--c-text2)' }}>
             {t.label}
@@ -528,9 +530,9 @@ export default function LocationsPage() {
             style={{background:'var(--c-bg2)',border:'1px solid var(--c-border2)',borderRadius:10,color:'var(--c-text)',padding:'8px 12px',fontSize:13,outline:'none',width:280,marginBottom:16}}/>
           <div style={{display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:12,marginBottom:20}}>
             {[
-              {label:'Total loué',val:(locations||[]).reduce((s,l)=>s+(Number(l.nbCaisses)||0),0),color:'var(--c-primary)'},
-              {label:'Total retourné',val:(locations||[]).reduce((s,l)=>s+(Number(l.nbCaissesRetournees)||0),0),color:'var(--c-success)'},
-              {label:'En circulation',val:(locations||[]).reduce((s,l)=>s+Math.max(0,(Number(l.nbCaisses)||0)-(Number(l.nbCaissesRetournees)||0)),0),color:'var(--c-warning)'},
+              {label:'Total loué',val:filteredLoc.reduce((s,l)=>s+(Number(l.nbCaisses)||0),0),color:'var(--c-primary)'},
+              {label:'Total retourné',val:filteredLoc.reduce((s,l)=>s+(Number(l.nbCaissesRetournees)||0),0),color:'var(--c-success)'},
+              {label:'En circulation',val:filteredLoc.reduce((s,l)=>s+Math.max(0,(Number(l.nbCaisses)||0)-(Number(l.nbCaissesRetournees)||0)),0),color:'var(--c-warning)'},
               {label:'Clients actifs',val:suiviFiltres.filter(s=>(s as any).totalRest>0).length,color:'var(--c-accent)'},
             ].map(k=>(
               <div key={k.label} style={{background:'var(--c-surface)',border:'1px solid var(--c-border)',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>

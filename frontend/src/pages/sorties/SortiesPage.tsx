@@ -7,6 +7,7 @@ import { PageHeader, Spinner } from '../../components/ui/UI';
 import type { Sortie, Client, Chambre } from '../../types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useCampagne } from '../../contexts/CampagneContext';
 
 const TYPES = [
   { value: 'bois', label: '🪵 Bois', color: 'var(--c-warning)' },
@@ -224,6 +225,7 @@ export default function SortiesPage() {
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
   const { data: chambres, refetch: refetchChambres } = useFetch<Chambre[]>(() => chambresApi.getAll());
   const { data: stockClients } = useFetch<any[]>(() => stockApi.getParClient());
+  const { campagneActive, isInCampagne } = useCampagne();
 
   const [tab, setTab] = useState<'online' | 'groupe' | 'historique'>('online');
   const [showNew, setShowNew] = useState(false);
@@ -289,7 +291,7 @@ export default function SortiesPage() {
     const mc = filterClient ? s.client.id===parseInt(filterClient) : true;
     const mt = filterType ? (s as any).typeCaisse===filterType : true;
     const mch = filterChambre ? s.chambre?.id===parseInt(filterChambre) : true;
-    return mc && mt && mch;
+    return mc && mt && mch && isInCampagne(s.dateSortie);
   });
 
   const ns = {background:'#161d35',border:'1px solid rgba(79,142,247,.3)',borderRadius:6,color:'#e8edf8',padding:'5px 0',fontSize:13,width:70,outline:'none',textAlign:'center' as const};
@@ -298,10 +300,10 @@ export default function SortiesPage() {
 
   return (
     <div className="fade-in">
-      <PageHeader title="Sorties" subtitle={`${(sorties||[]).length} sortie(s) enregistrée(s)`} />
+      <PageHeader title="Sorties" subtitle={`Campagne ${campagneActive} — ${filteredSorties.length} sortie(s)`} />
 
       <div style={{display:'flex',gap:4,background:'var(--c-surface)',border:'1px solid var(--c-border)',borderRadius:10,padding:4,width:'fit-content',marginBottom:22}}>
-        {[{id:'online',label:'📝 Sortie quotidienne'},{id:'groupe',label:'🏭 Sortie groupe'},{id:'historique',label:`📋 Historique (${(sorties||[]).length})`}].map(t => (
+        {[{id:'online',label:'📝 Sortie quotidienne'},{id:'groupe',label:'🏭 Sortie groupe'},{id:'historique',label:`📋 Historique (${filteredSorties.length})`}].map(t => (
           <button key={t.id} onClick={()=>setTab(t.id as any)}
             style={{padding:'7px 16px',borderRadius:7,border:'none',fontSize:13,fontWeight:600,cursor:'pointer',background:tab===t.id?'var(--c-primary-glow)':'transparent',color:tab===t.id?'var(--c-primary)':'var(--c-text2)',transition:'all .15s'}}>
             {t.label}

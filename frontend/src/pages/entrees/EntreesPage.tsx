@@ -7,6 +7,7 @@ import { Button, PageHeader, Spinner } from '../../components/ui/UI';
 import type { Entree, Client, Chambre, Reservation } from '../../types';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useCampagne } from '../../contexts/CampagneContext';
 
 const TYPES = [
   { value: 'bois', label: '🪵 Bois', color: 'var(--c-warning)' },
@@ -37,6 +38,7 @@ export default function EntreesPage() {
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
   const { data: chambres, refetch: refetchChambres } = useFetch<Chambre[]>(() => chambresApi.getAll());
   const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
+  const { campagneActive, isInCampagne } = useCampagne();
 
   const [tab, setTab] = useState<'affectation' | 'historique'>('affectation');
   const [chambreGroupe, setChambreGroupe] = useState('');
@@ -192,7 +194,7 @@ export default function EntreesPage() {
   const filteredEntrees = (entrees || []).filter(e => {
     const matchClient = filterClient ? e.client.id === parseInt(filterClient) : true;
     const matchType = filterType ? (e as any).typeCaisse === filterType : true;
-    return matchClient && matchType;
+    return matchClient && matchType && isInCampagne(e.dateEntree);
   });
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><Spinner size={36} /></div>;
@@ -202,11 +204,11 @@ export default function EntreesPage() {
 
   return (
     <div className="fade-in">
-      <PageHeader title="Entrées" subtitle={`${(entrees || []).length} entrée(s) enregistrée(s)`} />
+      <PageHeader title="Entrées" subtitle={`Campagne ${campagneActive} — ${filteredEntrees.length} entrée(s)`} />
 
       {/* Onglets */}
       <div style={{ display: 'flex', gap: 4, background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 10, padding: 4, width: 'fit-content', marginBottom: 22 }}>
-        {[{ id: 'affectation', label: '⚡ Affectation rapide' }, { id: 'historique', label: `📋 Historique (${(entrees || []).length})` }].map(t => (
+        {[{ id: 'affectation', label: '⚡ Affectation rapide' }, { id: 'historique', label: `📋 Historique (${filteredEntrees.length})` }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             style={{ padding: '7px 20px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: tab === t.id ? 'var(--c-primary-glow)' : 'transparent', color: tab === t.id ? 'var(--c-primary)' : 'var(--c-text2)', transition: 'all .15s' }}>
             {t.label}
