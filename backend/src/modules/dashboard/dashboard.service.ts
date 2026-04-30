@@ -32,10 +32,11 @@ export class DashboardService {
     const montantReservations = reservations.reduce((s, r) => s + r.montantTotal, 0);
     const resteAPayer = montantReservations - totalPaye;
 
-    // Locations
+    // Locations — calcul correct : loué - retourné
     const locations = await this.locationRepo.find();
-    const totalCaissesLouees = locations.reduce((s, l) => s + l.nbCaisses, 0);
-    const totalCaissesRestantes = locations.reduce((s, l) => s + l.nbCaissesRestantes, 0);
+    const totalCaissesLouees = locations.reduce((s, l) => s + (Number(l.nbCaisses) || 0), 0);
+    const totalCaissesRetournees = locations.reduce((s, l) => s + (Number(l.nbCaissesRetournees) || 0), 0);
+    const totalCaissesRestantes = Math.max(0, totalCaissesLouees - totalCaissesRetournees);
 
     // Mouvements du jour
     const today = new Date().toISOString().split('T')[0];
@@ -75,9 +76,10 @@ export class DashboardService {
       },
       locations: {
         totalCaissesLouees,
+        totalCaissesRetournees,
         totalCaissesRestantes,
         tauxRetour: totalCaissesLouees > 0
-          ? Math.round(((totalCaissesLouees - totalCaissesRestantes) / totalCaissesLouees) * 100)
+          ? Math.round((totalCaissesRetournees / totalCaissesLouees) * 100)
           : 0,
       },
       mouvementsAujourdhui: {
