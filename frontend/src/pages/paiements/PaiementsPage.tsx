@@ -356,7 +356,7 @@ export default function PaiementsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--c-bg2)' }}>
-                {['Date', 'Client', 'Montant', 'Mode', 'Référence', 'Total encaissé', 'Restant dû', ''].map(h => (
+                {['Date', 'Client', 'Total à encaisser', 'Mode', 'Référence', 'Total encaissé', 'Restant dû', ''].map(h => (
                   <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
                 ))}
               </tr>
@@ -384,7 +384,7 @@ export default function PaiementsPage() {
                     <td style={{ padding: '11px 14px', fontSize: 13 }}>{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
                     <td style={{ padding: '11px 14px', fontWeight: 600 }}>{p.client.nom}</td>
                     <td style={{ padding: '11px 14px' }}>
-                      <strong style={{ color: 'var(--c-success)', fontSize: 15 }}>{fmt(Number(p.montant))} Dh</strong>
+                      <strong style={{ color: 'var(--c-primary)', fontSize: 15 }}>{montantResaClient > 0 ? `${fmt(montantResaClient)} Dh` : '—'}</strong>
                     </td>
                     <td style={{ padding: '11px 14px' }}>
                       <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
