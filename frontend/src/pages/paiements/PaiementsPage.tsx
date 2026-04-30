@@ -356,40 +356,61 @@ export default function PaiementsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--c-bg2)' }}>
-                {['Date', 'Client', 'Montant', 'Mode', 'Référence', ''].map(h => (
+                {['Date', 'Client', 'Montant', 'Mode', 'Référence', 'Total encaissé', 'Restant dû', ''].map(h => (
                   <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {paiementsCampagne.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>
+                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>
                   Aucun paiement — <button onClick={() => setModal('new')} style={{ color: 'var(--c-primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Ajouter le premier</button>
                 </td></tr>
               )}
-              {paiementsCampagne.map((p, i) => (
-                <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
-                  <td style={{ padding: '11px 14px', fontSize: 13 }}>{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
-                  <td style={{ padding: '11px 14px', fontWeight: 600 }}>{p.client.nom}</td>
-                  <td style={{ padding: '11px 14px' }}>
-                    <strong style={{ color: 'var(--c-success)', fontSize: 15 }}>{fmt(Number(p.montant))} Dh</strong>
-                  </td>
-                  <td style={{ padding: '11px 14px' }}>
-                    <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
-                      {MODES.find(m => m.value === p.modePaiement)?.label || p.modePaiement}
-                    </span>
-                  </td>
-                  <td style={{ padding: '11px 14px', color: 'var(--c-text2)', fontSize: 12 }}>{(p as any).reference || '—'}</td>
-                  <td style={{ padding: '11px 14px' }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => setModal(p)}
-                        style={{ background: 'rgba(79,142,247,.12)', border: '1px solid rgba(79,142,247,.25)', color: 'var(--c-primary)', borderRadius: 6, width: 28, height: 28, fontSize: 13, cursor: 'pointer' }}>✏</button>
-                      <button onClick={() => handleDelete(p.id, p.client.nom)}
-                        style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 28, height: 28, fontSize: 12, cursor: 'pointer' }}>✕</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {paiementsCampagne.map((p, i) => {
+                // Calculer encaissé total et restant pour ce client
+                const totalEncaisseClient = paiementsCampagne
+                  .filter(x => x.client.id === p.client.id)
+                  .reduce((s, x) => s + Number(x.montant), 0);
+                const resaClient = reservationsCampagne.filter(r => (r as any).client?.id === p.client.id);
+                const montantResaClient = resaClient.reduce((s, r) => s +
+                  (Number((r as any).nbCaissesBois)||0) * (Number((r as any).prixUnitaireBois)||0) +
+                  (Number((r as any).nbCaissesPластique)||0) * (Number((r as any).prixUnitairePlastique)||0) +
+                  (Number((r as any).nbCaissesTranger)||0) * (Number((r as any).prixUnitaireTranger)||0), 0);
+                const restantClient = Math.max(0, montantResaClient - totalEncaisseClient);
+
+                return (
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
+                    <td style={{ padding: '11px 14px', fontSize: 13 }}>{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
+                    <td style={{ padding: '11px 14px', fontWeight: 600 }}>{p.client.nom}</td>
+                    <td style={{ padding: '11px 14px' }}>
+                      <strong style={{ color: 'var(--c-success)', fontSize: 15 }}>{fmt(Number(p.montant))} Dh</strong>
+                    </td>
+                    <td style={{ padding: '11px 14px' }}>
+                      <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
+                        {MODES.find(m => m.value === p.modePaiement)?.label || p.modePaiement}
+                      </span>
+                    </td>
+                    <td style={{ padding: '11px 14px', color: 'var(--c-text2)', fontSize: 12 }}>{(p as any).reference || '—'}</td>
+                    <td style={{ padding: '11px 14px' }}>
+                      <strong style={{ color: 'var(--c-success)' }}>{fmt(totalEncaisseClient)} Dh</strong>
+                    </td>
+                    <td style={{ padding: '11px 14px' }}>
+                      {restantClient > 0
+                        ? <strong style={{ color: 'var(--c-danger)' }}>{fmt(restantClient)} Dh</strong>
+                        : <span style={{ color: 'var(--c-success)', fontSize: 12, fontWeight: 600 }}>✓ Soldé</span>}
+                    </td>
+                    <td style={{ padding: '11px 14px' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setModal(p)}
+                          style={{ background: 'rgba(79,142,247,.12)', border: '1px solid rgba(79,142,247,.25)', color: 'var(--c-primary)', borderRadius: 6, width: 28, height: 28, fontSize: 13, cursor: 'pointer' }}>✏</button>
+                        <button onClick={() => handleDelete(p.id, p.client.nom)}
+                          style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 28, height: 28, fontSize: 12, cursor: 'pointer' }}>✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
