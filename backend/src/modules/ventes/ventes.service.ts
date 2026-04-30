@@ -7,9 +7,13 @@ import { Vente } from './vente.entity';
 export class VentesService {
   constructor(@InjectRepository(Vente) private repo: Repository<Vente>) {}
 
-  findAll() { return this.repo.find({ order: { dateVente: 'DESC', createdAt: 'DESC' } }); }
+  findAll() {
+    return this.repo.find({ order: { dateVente: 'DESC', createdAt: 'DESC' } });
+  }
 
-  findOne(id: number) { return this.repo.findOne({ where: { id } }); }
+  findOne(id: number) {
+    return this.repo.findOne({ where: { id } });
+  }
 
   async create(dto: any) {
     const v = this.repo.create({
@@ -18,9 +22,8 @@ export class VentesService {
       quantiteTonnes: dto.quantiteTonnes,
       villeDestinataire: dto.villeDestinataire,
       typeMarchandise: dto.typeMarchandise,
-      prixUnitaire: dto.prixUnitaire,
-      transporteur: dto.transporteur,
-      statut: dto.statut || 'en_cours',
+      origineFerme: dto.origineFerme,
+      statut: dto.statut || 'livre',
       notes: dto.notes,
     });
     return this.repo.save(v);
@@ -34,8 +37,7 @@ export class VentesService {
     if (dto.quantiteTonnes !== undefined) v.quantiteTonnes = dto.quantiteTonnes;
     if (dto.villeDestinataire !== undefined) v.villeDestinataire = dto.villeDestinataire;
     if (dto.typeMarchandise !== undefined) v.typeMarchandise = dto.typeMarchandise;
-    if (dto.prixUnitaire !== undefined) v.prixUnitaire = dto.prixUnitaire;
-    if (dto.transporteur !== undefined) v.transporteur = dto.transporteur;
+    if (dto.origineFerme !== undefined) v.origineFerme = dto.origineFerme;
     if (dto.statut !== undefined) v.statut = dto.statut;
     if (dto.notes !== undefined) v.notes = dto.notes;
     return this.repo.save(v);
