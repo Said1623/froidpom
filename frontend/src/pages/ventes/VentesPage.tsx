@@ -52,6 +52,7 @@ function ModalVente({ vente, clients, onClose, onSaved }: {
     quantiteTonnes: vente?.quantiteTonnes || '',
     villeDestinataire: vente?.villeDestinataire || '',
     typeMarchandise: vente?.typeMarchandise || '',
+    origineFerme: vente?.origineFerme || '',
     prixUnitaire: vente?.prixUnitaire || '',
     transporteur: vente?.transporteur || '',
     statut: vente?.statut || 'livre',
@@ -117,6 +118,7 @@ function ModalVente({ vente, clients, onClose, onSaved }: {
           </div>
 
           {inp('Type marchandise', 'typeMarchandise', 'text', { placeholder: 'Pommes, Légumes...' })}
+          {inp('Origine (ferme)', 'origineFerme', 'text', { placeholder: 'Nom de la ferme...' })}
           {inp('Prix unitaire (MAD/T)', 'prixUnitaire', 'number', { min: 0, step: 0.01 })}
 
           {/* Montant calculé */}
@@ -167,6 +169,7 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
   const [quantite, setQuantite] = useState('');
   const [ville, setVille] = useState('');
   const [type, setType] = useState('Pomme fruits');
+  const [origineFerme, setOrigineFerme] = useState('');
 
   // Sélection clients
   const [search, setSearch] = useState('');
@@ -203,6 +206,7 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
     setQuantite('');
     setVille('');
     setType('Pomme fruits');
+    setOrigineFerme('');
     setDate(today);
   }
 
@@ -224,6 +228,7 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
           quantiteTonnes: parseFloat(quantite),
           villeDestinataire: ville,
           typeMarchandise: type,
+          origineFerme,
           statut: 'livre',
         });
         setDones(prev => new Set([...prev, c.id]));
@@ -337,6 +342,13 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
           <div>
             <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Type de marchandise</div>
             <input type="text" value={type} onChange={e => setType(e.target.value)}
+              style={{ background: '#161d35', border: '1px solid rgba(79,142,247,.3)', borderRadius: 8, color: '#e8edf8', padding: '9px 12px', fontSize: 13, width: '100%', outline: 'none', boxSizing: 'border-box' as const }} />
+          </div>
+
+          {/* Origine ferme */}
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Origine (ferme)</div>
+            <input type="text" value={origineFerme} onChange={e => setOrigineFerme(e.target.value)} placeholder="Nom de la ferme..."
               style={{ background: '#161d35', border: '1px solid rgba(79,142,247,.3)', borderRadius: 8, color: '#e8edf8', padding: '9px 12px', fontSize: 13, width: '100%', outline: 'none', boxSizing: 'border-box' as const }} />
           </div>
 
@@ -549,13 +561,13 @@ export default function VentesPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
                 <tr style={{ background: 'var(--c-bg2)' }}>
-                  {['Date', 'Client', 'Quantité', 'Ville', 'Type', 'Statut', ''].map(h => (
+                  {['Date', 'Client', 'Quantité', 'Ville', 'Type', 'Origine (ferme)', 'Statut', ''].map(h => (
                     <th key={h} style={{ padding: '11px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtres.length === 0 && <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>Aucune vente</td></tr>}
+                {filtres.length === 0 && <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>Aucune vente</td></tr>}
                 {filtres.map((v, i) => {
                   return (
                     <tr key={v.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
@@ -566,6 +578,7 @@ export default function VentesPage() {
                         <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>{v.villeDestinataire}</span>
                       </td>
                       <td style={{ padding: '10px 10px', color: 'var(--c-text2)' }}>{v.typeMarchandise || '-'}</td>
+                      <td style={{ padding: '10px 10px', color: 'var(--c-text2)' }}>{v.origineFerme || '-'}</td>
                       <td style={{ padding: '10px 10px' }}>
                         <span style={{ color: statutColor(v.statut), fontWeight: 600, fontSize: 12 }}>{statutLabel(v.statut)}</span>
                       </td>

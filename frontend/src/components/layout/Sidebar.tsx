@@ -4,16 +4,17 @@ import { useCampagne } from '../../contexts/CampagneContext';
 import styles from './Sidebar.module.css';
 
 const NAV = [
-  { to: '/',            icon: '◈',  label: 'Tableau de bord' },
-  { to: '/chambres',    icon: '❄',  label: 'Chambres' },
-  { to: '/clients',     icon: '👤', label: 'Clients' },
-  { to: '/reservations',icon: '📋', label: 'Réservations' },
-  { to: '/entrees',     icon: '↓',  label: 'Entrées' },
-  { to: '/sorties',     icon: '↑',  label: 'Sorties' },
-  { to: '/paiements',   icon: '€',  label: 'Paiements' },
-  { to: '/locations',   icon: '📦', label: 'Locations' },
-  { to: '/stock',       icon: '≡',  label: 'Suivi Stock' },
-  { to: '/ventes',      icon: '🚚', label: 'Suivi Ventes' },
+  { to: '/', icon: '◈', label: 'Tableau de bord' },
+  { to: '/chambres', icon: '❄', label: 'Chambres' },
+  { to: '/clients', icon: '👤', label: 'Clients' },
+  { to: '/reservations', icon: '📋', label: 'Réservations' },
+  { to: '/entrees', icon: '↓', label: 'Entrées' },
+  { to: '/sorties', icon: '↑', label: 'Sorties' },
+  { to: '/paiements', icon: 'Dh', label: 'Paiements' },
+  { to: '/historique-paiements', icon: '📜', label: 'Historique Paiements' },
+  { to: '/locations', icon: '📦', label: 'Locations' },
+  { to: '/stock', icon: '≡', label: 'Suivi Stock' },
+  { to: '/ventes', icon: '🚚', label: 'Suivi Ventes' },
 ];
 
 export function Sidebar() {

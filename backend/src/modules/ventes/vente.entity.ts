@@ -22,13 +22,10 @@ export class Vente {
   @Column({ type: 'varchar', length: 100, nullable: true })
   typeMarchandise: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  prixUnitaire: number;
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  origineFerme: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  transporteur: string;
-
-  @Column({ type: 'varchar', length: 50, default: 'en_cours' })
+  @Column({ type: 'varchar', length: 50, default: 'livre' })
   statut: string;
 
   @Column({ type: 'text', nullable: true })

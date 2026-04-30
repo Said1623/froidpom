@@ -12,6 +12,7 @@ import PaiementsPage from './pages/paiements/PaiementsPage';
 import LocationsPage from './pages/locations/LocationsPage';
 import StockPage from './pages/stock/StockPage';
 import VentesPage from './pages/ventes/VentesPage';
+import HistoriquePaiementsPage from './pages/historique-paiements/HistoriquePaiementsPage';
 
 function LoginPage() {
   async function handleLogin() {
@@ -93,6 +94,7 @@ function AppRoutes() {
         <Route path="entrees" element={<EntreesPage />} />
         <Route path="sorties" element={<SortiesPage />} />
         <Route path="paiements" element={<PaiementsPage />} />
+        <Route path="/historique-paiements" element={<HistoriquePaiementsPage />} />
         <Route path="locations" element={<LocationsPage />} />
         <Route path="stock" element={<StockPage />} />
         <Route path="ventes" element={<VentesPage />} />

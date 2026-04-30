@@ -1,11 +1,8 @@
-import { BtnPdf } from '../../components/ui/BtnPdf';
-import { pdfPaiements } from '../../services/pdfService';
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { paiementsApi, clientsApi, reservationsApi } from '../../services';
 import { Button, PageHeader, Spinner } from '../../components/ui/UI';
 import type { Paiement, Client, Reservation } from '../../types';
-import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { createPortal } from 'react-dom';
 import { useCampagne } from '../../contexts/CampagneContext';
@@ -33,27 +30,42 @@ const sInp = {
   boxSizing: 'border-box' as const,
 };
 
-function ModalPaiement({ clients, onClose, onSaved }: {
-  clients: Client[]; onClose: () => void; onSaved: () => void;
+// ── Modal Paiement (Créer / Modifier) ─────────────────
+function ModalPaiement({ paiement, clients, onClose, onSaved }: {
+  paiement?: Paiement; clients: Client[]; onClose: () => void; onSaved: () => void;
 }) {
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({
-    clientId: '', datePaiement: today, montant: '',
-    modePaiement: 'especes', reference: '', notes: '',
+    clientId: paiement ? String(paiement.client.id) : '',
+    datePaiement: paiement ? (paiement as any).datePaiement : today,
+    montant: paiement ? String(paiement.montant) : '',
+    modePaiement: paiement ? paiement.modePaiement : 'especes',
+    reference: paiement ? ((paiement as any).reference || '') : '',
+    notes: paiement ? ((paiement as any).notes || '') : '',
   });
   const [saving, setSaving] = useState(false);
+  const isEdit = !!paiement;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!form.clientId || !form.montant) return toast.error('Client et montant requis');
     setSaving(true);
     try {
-      await paiementsApi.create({
-        clientId: parseInt(form.clientId), datePaiement: form.datePaiement,
-        montant: parseFloat(form.montant), modePaiement: form.modePaiement,
-        reference: form.reference || undefined, notes: form.notes || undefined,
-      });
-      toast.success('Paiement enregistré');
+      const dto = {
+        clientId: parseInt(form.clientId),
+        datePaiement: form.datePaiement,
+        montant: parseFloat(form.montant),
+        modePaiement: form.modePaiement,
+        reference: form.reference || undefined,
+        notes: form.notes || undefined,
+      };
+      if (isEdit) {
+        await paiementsApi.update(paiement!.id, dto);
+        toast.success('Paiement modifié');
+      } else {
+        await paiementsApi.create(dto);
+        toast.success('Paiement enregistré');
+      }
       onSaved(); onClose();
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Erreur'); }
     finally { setSaving(false); }
@@ -64,13 +76,15 @@ function ModalPaiement({ clients, onClose, onSaved }: {
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.75)' }} onClick={onClose} />
       <div style={{ position: 'relative', zIndex: 1, background: '#0f1628', border: '1px solid rgba(100,140,255,.3)', borderRadius: 16, width: '100%', maxWidth: 480, padding: '24px 28px', boxShadow: '0 24px 64px rgba(0,0,0,.6)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#e8edf8' }}>+ Nouveau paiement</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#e8edf8' }}>
+            {isEdit ? '✏ Modifier le paiement' : '+ Nouveau paiement'}
+          </div>
           <button onClick={onClose} style={{ background: '#1f2a4a', border: 'none', color: '#8fa3cc', width: 30, height: 30, borderRadius: 6, cursor: 'pointer', fontSize: 16 }}>✕</button>
         </div>
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Client *</div>
-            <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} style={sInp}>
+            <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} style={sInp} disabled={isEdit}>
               <option value="">-- Sélectionner --</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
@@ -93,10 +107,15 @@ function ModalPaiement({ clients, onClose, onSaved }: {
             <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Référence</div>
             <input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} placeholder="N° chèque, virement..." style={sInp} />
           </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>Notes</div>
+            <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2}
+              style={{ ...sInp, resize: 'vertical' }} />
+          </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
             <button type="button" onClick={onClose} style={{ background: '#1f2a4a', border: '1px solid rgba(100,140,255,.2)', color: '#8fa3cc', borderRadius: 10, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Annuler</button>
             <button type="submit" disabled={saving} style={{ background: 'var(--c-success)', border: 'none', color: '#fff', borderRadius: 10, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-              {saving ? '...' : '✓ Enregistrer'}
+              {saving ? '...' : isEdit ? '✓ Modifier' : '✓ Enregistrer'}
             </button>
           </div>
         </form>
@@ -105,6 +124,7 @@ function ModalPaiement({ clients, onClose, onSaved }: {
   );
 }
 
+// ── Saisie groupe ─────────────────────────────────────
 interface GroupeRow { client: Client; montant: string; mode: string; reference: string; selected: boolean; done: boolean; error: string; }
 
 function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => void }) {
@@ -268,34 +288,29 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
   );
 }
 
+// ── Page principale ────────────────────────────────────
 export default function PaiementsPage() {
   const { data: paiements, loading, refetch } = useFetch<Paiement[]>(() => paiementsApi.getAll());
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
   const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
   const { campagneActive, isInCampagne } = useCampagne();
-  const [tab, setTab] = useState<'liste' | 'groupe'>('liste');
-  const [modal, setModal] = useState(false);
-  const [filterClient, setFilterClient] = useState('');
+  const [tab, setTab] = useState<'saisie' | 'groupe' | 'recap'>('saisie');
+  const [modal, setModal] = useState<Paiement | null | 'new'>(null);
 
-  // ── Filtre campagne ──
   const paiementsCampagne = (paiements || []).filter(p => isInCampagne(p.datePaiement));
   const reservationsCampagne = (reservations || []).filter(r => isInCampagne((r as any).dateReservation));
 
   const totalPaye = paiementsCampagne.reduce((s, p) => s + Number(p.montant), 0);
   const totalReservations = reservationsCampagne.reduce((s, r) => {
-    const bois  = (Number((r as any).nbCaissesBois) || 0) * (Number((r as any).prixUnitaireBois) || 0);
-    const plast = (Number((r as any).nbCaissesPластique) || 0) * (Number((r as any).prixUnitairePlastique) || 0);
-    const tran  = (Number((r as any).nbCaissesTranger) || 0) * (Number((r as any).prixUnitaireTranger) || 0);
-    return s + bois + plast + tran;
+    return s +
+      (Number((r as any).nbCaissesBois) || 0) * (Number((r as any).prixUnitaireBois) || 0) +
+      (Number((r as any).nbCaissesPластique) || 0) * (Number((r as any).prixUnitairePlastique) || 0) +
+      (Number((r as any).nbCaissesTranger) || 0) * (Number((r as any).prixUnitaireTranger) || 0);
   }, 0);
   const resteAPayer = Math.max(0, totalReservations - totalPaye);
 
-  const filtered = filterClient
-    ? paiementsCampagne.filter(p => p.client.id === parseInt(filterClient))
-    : paiementsCampagne;
-
-  async function handleDelete(id: number) {
-    if (!confirm('Supprimer ce paiement ?')) return;
+  async function handleDelete(id: number, nom: string) {
+    if (!confirm(`Supprimer le paiement de ${nom} ?`)) return;
     try { await paiementsApi.delete(id); toast.success('Supprimé'); refetch(); }
     catch (e: any) { toast.error(e?.response?.data?.message || 'Erreur'); }
   }
@@ -304,9 +319,10 @@ export default function PaiementsPage() {
 
   return (
     <div className="fade-in">
-      <PageHeader title="Paiements" subtitle={`Campagne ${campagneActive} — Suivi des encaissements`}
-        action={<Button onClick={() => setModal(true)}>+ Nouveau paiement</Button>} />
+      <PageHeader title="Paiements" subtitle={`Campagne ${campagneActive}`}
+        action={<Button onClick={() => setModal('new')}>+ Nouveau paiement</Button>} />
 
+      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 22 }}>
         {[
           { icon: '✓', label: 'Total encaissé', val: `${fmt(totalPaye)} Dh`, color: 'var(--c-success)' },
@@ -320,113 +336,116 @@ export default function PaiementsPage() {
         ))}
       </div>
 
+      {/* Onglets */}
       <div style={{ display: 'flex', gap: 4, background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 10, padding: 4, width: 'fit-content', marginBottom: 20 }}>
-        {[{ id: 'liste', label: '📋 Liste' }, { id: 'groupe', label: '⚡ Saisie groupe' }].map(t => (
+        {[
+          { id: 'saisie', label: '💰 Saisie individuelle' },
+          { id: 'groupe', label: '⚡ Saisie groupe' },
+          { id: 'recap', label: '📊 Récap par client' },
+        ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
-            style={{ padding: '7px 18px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: tab === t.id ? 'var(--c-primary-glow)' : 'transparent', color: tab === t.id ? 'var(--c-primary)' : 'var(--c-text2)' }}>
+            style={{ padding: '7px 16px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: tab === t.id ? 'var(--c-primary-glow)' : 'transparent', color: tab === t.id ? 'var(--c-primary)' : 'var(--c-text2)' }}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {tab === 'liste' && (
-        <>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center' }}>
-            <select value={filterClient} onChange={e => setFilterClient(e.target.value)}
-              style={{ background: 'var(--c-bg2)', border: '1px solid var(--c-border2)', borderRadius: 10, color: 'var(--c-text)', padding: '8px 12px', fontSize: 13, outline: 'none' }}>
-              <option value="">Tous les clients</option>
-              {clients?.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
-            </select>
-            <BtnPdf onClick={() => pdfPaiements(filtered, totalReservations)} label="⬇ Exporter PDF" disabled={!filtered.length} />
-          </div>
-
-          {/* Récapitulatif par client — filtré par campagne */}
-          {!filterClient && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text2)', marginBottom: 10 }}>📊 Récapitulatif par client — Campagne {campagneActive}</div>
-              <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 10 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--c-bg2)' }}>
-                      {['Client', 'Réservé', 'Encaissé', 'Reste à encaisser'].map(h => (
-                        <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(clients || []).map((c, i) => {
-                      const resaClient = reservationsCampagne.filter(r => (r as any).client?.id === c.id || (r as any).client_id === c.id);
-                      const montantResa = resaClient.reduce((s, r) => {
-                        return s +
-                          (Number((r as any).nbCaissesBois)||0) * (Number((r as any).prixUnitaireBois)||0) +
-                          (Number((r as any).nbCaissesPластique)||0) * (Number((r as any).prixUnitairePlastique)||0) +
-                          (Number((r as any).nbCaissesTranger)||0) * (Number((r as any).prixUnitaireTranger)||0);
-                      }, 0);
-                      const montantEncaisse = paiementsCampagne.filter(p => p.client.id === c.id).reduce((s, p) => s + Number(p.montant), 0);
-                      const reste = Math.max(0, montantResa - montantEncaisse);
-                      if (montantResa === 0 && montantEncaisse === 0) return null;
-                      return (
-                        <tr key={c.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 600, fontSize: 13 }}>{c.nom}</td>
-                          <td style={{ padding: '10px 14px', color: 'var(--c-primary)', fontWeight: 600 }}>{montantResa > 0 ? `${fmt(montantResa)} Dh` : '—'}</td>
-                          <td style={{ padding: '10px 14px', color: 'var(--c-success)', fontWeight: 700 }}>{montantEncaisse > 0 ? `${fmt(montantEncaisse)} Dh` : '—'}</td>
-                          <td style={{ padding: '10px 14px' }}>
-                            {reste > 0
-                              ? <span style={{ color: 'var(--c-danger)', fontWeight: 700 }}>{fmt(reste)} Dh</span>
-                              : montantEncaisse > 0
-                                ? <span style={{ color: 'var(--c-success)', fontSize: 12 }}>✓ Soldé</span>
-                                : <span style={{ color: 'var(--c-text3)' }}>—</span>}
-                          </td>
-                        </tr>
-                      );
-                    }).filter(Boolean)}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text2)', marginBottom: 10 }}>
-            {filterClient ? `Paiements — ${clients?.find(c => c.id === parseInt(filterClient))?.nom}` : '📋 Historique des paiements'}
-          </div>
-          <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 10 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--c-bg2)' }}>
-                  {['Date', 'Client', 'Montant', 'Mode', 'Référence', ''].map(h => (
-                    <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>Aucun paiement pour la campagne {campagneActive}</td></tr>}
-                {filtered.map((p, i) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
-                    <td style={{ padding: '11px 14px', fontSize: 13 }}>{format(new Date(p.datePaiement), 'dd/MM/yyyy')}</td>
-                    <td style={{ padding: '11px 14px', fontWeight: 600 }}>{p.client.nom}</td>
-                    <td style={{ padding: '11px 14px' }}>
-                      <strong style={{ color: 'var(--c-success)', fontSize: 15 }}>{fmt(Number(p.montant))} Dh</strong>
-                    </td>
-                    <td style={{ padding: '11px 14px' }}>
-                      <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
-                        {MODES.find(m => m.value === p.modePaiement)?.label || p.modePaiement}
-                      </span>
-                    </td>
-                    <td style={{ padding: '11px 14px', color: 'var(--c-text2)' }}>{p.reference || '—'}</td>
-                    <td style={{ padding: '11px 14px' }}>
-                      <button onClick={() => handleDelete(p.id)}
-                        style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 28, height: 28, fontSize: 12, cursor: 'pointer' }}>✕</button>
-                    </td>
-                  </tr>
+      {/* ══ SAISIE INDIVIDUELLE ══ */}
+      {tab === 'saisie' && (
+        <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 10 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--c-bg2)' }}>
+                {['Date', 'Client', 'Montant', 'Mode', 'Référence', ''].map(h => (
+                  <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+              </tr>
+            </thead>
+            <tbody>
+              {paiementsCampagne.length === 0 && (
+                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--c-text3)' }}>
+                  Aucun paiement — <button onClick={() => setModal('new')} style={{ color: 'var(--c-primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Ajouter le premier</button>
+                </td></tr>
+              )}
+              {paiementsCampagne.map((p, i) => (
+                <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
+                  <td style={{ padding: '11px 14px', fontSize: 13 }}>{new Date(p.datePaiement).toLocaleDateString('fr-FR')}</td>
+                  <td style={{ padding: '11px 14px', fontWeight: 600 }}>{p.client.nom}</td>
+                  <td style={{ padding: '11px 14px' }}>
+                    <strong style={{ color: 'var(--c-success)', fontSize: 15 }}>{fmt(Number(p.montant))} Dh</strong>
+                  </td>
+                  <td style={{ padding: '11px 14px' }}>
+                    <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
+                      {MODES.find(m => m.value === p.modePaiement)?.label || p.modePaiement}
+                    </span>
+                  </td>
+                  <td style={{ padding: '11px 14px', color: 'var(--c-text2)', fontSize: 12 }}>{(p as any).reference || '—'}</td>
+                  <td style={{ padding: '11px 14px' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setModal(p)}
+                        style={{ background: 'rgba(79,142,247,.12)', border: '1px solid rgba(79,142,247,.25)', color: 'var(--c-primary)', borderRadius: 6, width: 28, height: 28, fontSize: 13, cursor: 'pointer' }}>✏</button>
+                      <button onClick={() => handleDelete(p.id, p.client.nom)}
+                        style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 28, height: 28, fontSize: 12, cursor: 'pointer' }}>✕</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
+      {/* ══ GROUPE ══ */}
       {tab === 'groupe' && <TabGroupe clients={clients || []} onSaved={refetch} />}
-      {modal && <ModalPaiement clients={clients || []} onClose={() => setModal(false)} onSaved={refetch} />}
+
+      {/* ══ RÉCAP PAR CLIENT ══ */}
+      {tab === 'recap' && (
+        <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 10 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--c-bg2)' }}>
+                {['Client', 'Réservé', 'Encaissé', 'Reste à encaisser'].map(h => (
+                  <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--c-text2)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid var(--c-border)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(clients || []).map((c, i) => {
+                const resaClient = reservationsCampagne.filter(r => (r as any).client?.id === c.id);
+                const montantResa = resaClient.reduce((s, r) => s +
+                  (Number((r as any).nbCaissesBois)||0) * (Number((r as any).prixUnitaireBois)||0) +
+                  (Number((r as any).nbCaissesPластique)||0) * (Number((r as any).prixUnitairePlastique)||0) +
+                  (Number((r as any).nbCaissesTranger)||0) * (Number((r as any).prixUnitaireTranger)||0), 0);
+                const montantEncaisse = paiementsCampagne.filter(p => p.client.id === c.id).reduce((s, p) => s + Number(p.montant), 0);
+                const reste = Math.max(0, montantResa - montantEncaisse);
+                if (montantResa === 0 && montantEncaisse === 0) return null;
+                return (
+                  <tr key={c.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 600, fontSize: 13 }}>{c.nom}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--c-primary)', fontWeight: 600 }}>{montantResa > 0 ? `${fmt(montantResa)} Dh` : '—'}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--c-success)', fontWeight: 700 }}>{montantEncaisse > 0 ? `${fmt(montantEncaisse)} Dh` : '—'}</td>
+                    <td style={{ padding: '10px 14px' }}>
+                      {reste > 0 ? <span style={{ color: 'var(--c-danger)', fontWeight: 700 }}>{fmt(reste)} Dh</span>
+                        : montantEncaisse > 0 ? <span style={{ color: 'var(--c-success)', fontSize: 12 }}>✓ Soldé</span>
+                        : <span style={{ color: 'var(--c-text3)' }}>—</span>}
+                    </td>
+                  </tr>
+                );
+              }).filter(Boolean)}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal */}
+      {modal !== null && (
+        <ModalPaiement
+          paiement={modal === 'new' ? undefined : modal as Paiement}
+          clients={clients || []}
+          onClose={() => setModal(null)}
+          onSaved={() => { refetch(); setModal(null); }}
+        />
+      )}
     </div>
   );
 }
