@@ -133,8 +133,8 @@ function NewReservationRow({ client, clients, onSaved, onCancel }: {
 
 export default function ReservationsPage() {
   const { data: reservations, loading: loadingR, refetch } = useFetch<Reservation[]>(() => reservationsApi.getAll());
-  const { data: clients, loading: loadingC } = useFetch<Client[]>(() => clientsApi.getAll());
   const { campagneActive, isInCampagne } = useCampagne();
+  const { data: clients, loading: loadingC } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const [filterStatut, setFilterStatut] = useState('');
   const [search, setSearch] = useState('');
   const [inlineNew, setInlineNew] = useState<number | null | 'new'>(null);

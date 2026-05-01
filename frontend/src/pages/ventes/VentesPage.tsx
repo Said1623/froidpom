@@ -459,7 +459,8 @@ function exportPDF(ventes: any[], titre = 'Suivi Vente Marchandise') {
 
 // ── Page principale ───────────────────────────────────
 export default function VentesPage() {
-  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
+  const { campagneActive, isInCampagne } = useCampagne();
+  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const [ventes, setVentes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'liste'|'groupe'>('liste');
@@ -468,7 +469,6 @@ export default function VentesPage() {
   const [filterVille, setFilterVille] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [search, setSearch] = useState('');
-  const { campagneActive, isInCampagne } = useCampagne();
 
   async function loadVentes() {
     setLoading(true);

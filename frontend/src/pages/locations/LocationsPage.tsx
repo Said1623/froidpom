@@ -194,9 +194,9 @@ interface ClientLoc {
 // ── Page principale ───────────────────────────────────
 export default function LocationsPage() {
   const { data: locations, loading, refetch } = useFetch<Location[]>(() => locationsApi.getAll());
-  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
-  const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
   const { campagneActive, isInCampagne } = useCampagne();
+  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
+  const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
 
   const [tab, setTab] = useState<'session'|'suivi'|'historique'>('session');
   const [dateOp, setDateOp] = useState(new Date().toISOString().split('T')[0]);

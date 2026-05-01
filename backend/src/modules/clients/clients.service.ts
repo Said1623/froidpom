@@ -9,6 +9,7 @@ export class CreateClientDto {
   @IsOptional() @IsString() telephone?: string;
   @IsOptional() @IsString() adresse?: string;
   @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @IsString() campagne?: string;
 }
 
 export class UpdateClientDto {
@@ -17,20 +18,56 @@ export class UpdateClientDto {
   @IsOptional() @IsString() adresse?: string;
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() actif?: boolean;
+  @IsOptional() @IsString() campagne?: string;
 }
 
 @Injectable()
 export class ClientsService {
   constructor(@InjectRepository(Client) private readonly repo: Repository<Client>) {}
 
-  findAll(search?: string) {
+  findAll(search?: string, campagne?: string) {
+    if (search && campagne) {
+      return this.repo.find({
+        where: [
+          { nom: ILike(`%${search}%`), campagne },
+          { telephone: ILike(`%${search}%`), campagne },
+        ],
+        order: { nom: 'ASC' },
+      });
+    }
     if (search) {
       return this.repo.find({
         where: [{ nom: ILike(`%${search}%`) }, { telephone: ILike(`%${search}%`) }],
         order: { nom: 'ASC' },
       });
     }
+    if (campagne) {
+      return this.repo.find({ where: { campagne }, order: { nom: 'ASC' } });
+    }
     return this.repo.find({ order: { nom: 'ASC' } });
+  }
+
+  findByCampagne(campagne: string) {
+    return this.repo.find({ where: { campagne }, order: { nom: 'ASC' } });
+  }
+
+  async copierVersCampagne(sourceCampagne: string, cibleCampagne: string) {
+    const source = await this.repo.find({ where: { campagne: sourceCampagne } });
+    const existants = await this.repo.find({ where: { campagne: cibleCampagne } });
+    const nomsExistants = new Set(existants.map(c => c.nom.toLowerCase()));
+
+    const nouveaux = source
+      .filter(c => !nomsExistants.has(c.nom.toLowerCase()))
+      .map(c => this.repo.create({
+        nom: c.nom,
+        telephone: c.telephone,
+        adresse: c.adresse,
+        email: c.email,
+        campagne: cibleCampagne,
+      }));
+
+    await this.repo.save(nouveaux);
+    return { copies: nouveaux.length };
   }
 
   async findOne(id: number) {

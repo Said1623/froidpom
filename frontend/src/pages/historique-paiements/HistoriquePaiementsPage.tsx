@@ -22,8 +22,8 @@ function fmt(n: number) {
 
 export default function HistoriquePaiementsPage() {
   const { data: paiements, loading, refetch } = useFetch<Paiement[]>(() => paiementsApi.getAll());
-  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
   const { campagneActive, isInCampagne } = useCampagne();
+  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
 
   const [filterClient, setFilterClient] = useState('');
   const [filterMode, setFilterMode] = useState('');

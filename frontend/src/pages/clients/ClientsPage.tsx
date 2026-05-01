@@ -7,9 +7,11 @@ import { Button, Input, PageHeader, Spinner } from '../../components/ui/UI';
 import { createPortal } from 'react-dom';
 import type { Client } from '../../types';
 import toast from 'react-hot-toast';
+import { useCampagne } from '../../contexts/CampagneContext';
 
 export default function ClientsPage() {
-  const { data: clients, loading, refetch } = useFetch<Client[]>(() => clientsApi.getAll());
+  const { campagneActive } = useCampagne();
+  const { data: clients, loading, refetch } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const [modal, setModal] = useState<'create' | 'edit' | 'bulk' | null>(null);
   const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState('');
@@ -44,7 +46,7 @@ export default function ClientsPage() {
         await clientsApi.update(selected.id, form);
         toast.success('Client mis à jour');
       } else {
-        await clientsApi.create(form);
+        await clientsApi.create({ ...form, campagne: campagneActive });
         toast.success('Client créé');
       }
       setModal(null);
@@ -63,12 +65,29 @@ export default function ClientsPage() {
     setBulkProgress({ done: 0, total: noms.length });
     let success = 0; let errors = 0;
     for (let i = 0; i < noms.length; i++) {
-      try { await clientsApi.create({ nom: noms[i] }); success++; }
+      try { await clientsApi.create({ nom: noms[i], campagne: campagneActive }); success++; }
       catch { errors++; }
       setBulkProgress({ done: i + 1, total: noms.length });
     }
     setSaving(false); setBulkProgress(null); setBulkText(''); setModal(null); refetch();
     toast.success(`${success} client(s) importé(s)${errors > 0 ? `, ${errors} erreur(s)` : ''}`);
+  }
+
+  async function handleCopierCampagne() {
+    const anneeDebut = parseInt(campagneActive.split('-')[0]);
+    const campagnePrecedente = `${anneeDebut - 1}-${anneeDebut}`;
+    if (!confirm(`Copier les clients de la campagne ${campagnePrecedente} vers ${campagneActive} ?`)) return;
+    setSaving(true);
+    try {
+      const res = await clientsApi.copierCampagne(campagnePrecedente, campagneActive);
+      const nb = (res as any).data?.copies ?? 0;
+      toast.success(`${nb} client(s) copié(s) depuis ${campagnePrecedente}`);
+      refetch();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erreur');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -93,10 +112,11 @@ export default function ClientsPage() {
     <div className="fade-in">
       <PageHeader
         title="Clients"
-        subtitle={`${filtered.length} client(s)`}
+        subtitle={`${filtered.length} client(s) — Campagne active : ${campagneActive}`}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <BtnPdf onClick={() => pdfClients(filtered)} label="⬇ PDF" disabled={!filtered?.length} />
+            <Button variant="secondary" onClick={handleCopierCampagne} loading={saving}>↩ Copier campagne précédente</Button>
             <Button variant="secondary" onClick={() => setModal('bulk')}>⚡ Import rapide</Button>
             <Button onClick={openCreate}>+ Nouveau client</Button>
           </div>

@@ -34,11 +34,11 @@ interface ClientRow {
 }
 
 export default function EntreesPage() {
+  const { campagneActive, isInCampagne } = useCampagne();
   const { data: entrees, loading, refetch: refetchEntrees } = useFetch<Entree[]>(() => entreesApi.getAll());
-  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
+  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const { data: chambres, refetch: refetchChambres } = useFetch<Chambre[]>(() => chambresApi.getAll());
   const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
-  const { campagneActive, isInCampagne } = useCampagne();
 
   const [tab, setTab] = useState<'affectation' | 'historique'>('affectation');
   const [chambreGroupe, setChambreGroupe] = useState('');
@@ -53,7 +53,9 @@ export default function EntreesPage() {
   const rows = useMemo<ClientRow[]>(() => {
     if (!clients || !reservations || !entrees) return [];
     const resaMap: Record<number, Reservation> = {};
-    reservations.forEach(r => { resaMap[r.client.id] = r; });
+    reservations
+      .filter(r => isInCampagne((r as any).dateReservation))
+      .forEach(r => { resaMap[r.client.id] = r; });
 
     return clients
       .filter(c => resaMap[c.id]) // seulement ceux avec réservation

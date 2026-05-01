@@ -25,6 +25,9 @@ export class Client {
   @Column({ default: true })
   actif: boolean;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  campagne: string;
+
   @OneToMany(() => Reservation, (r) => r.client)
   reservations: Reservation[];
 

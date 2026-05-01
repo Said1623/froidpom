@@ -291,9 +291,9 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
 // ── Page principale ────────────────────────────────────
 export default function PaiementsPage() {
   const { data: paiements, loading, refetch } = useFetch<Paiement[]>(() => paiementsApi.getAll());
-  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
-  const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
   const { campagneActive, isInCampagne } = useCampagne();
+  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
+  const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
   const [tab, setTab] = useState<'saisie' | 'groupe' | 'recap'>('saisie');
   const [modal, setModal] = useState<Paiement | null | 'new'>(null);
 

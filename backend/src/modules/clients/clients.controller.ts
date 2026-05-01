@@ -8,7 +8,15 @@ export class ClientsController {
   constructor(private readonly service: ClientsService) {}
 
   @Get()
-  findAll(@Query('search') search?: string) { return this.service.findAll(search); }
+  findAll(
+    @Query('search') search?: string,
+    @Query('campagne') campagne?: string,
+  ) { return this.service.findAll(search, campagne); }
+
+  @Post('copier-campagne')
+  copierCampagne(@Body() body: { source: string; cible: string }) {
+    return this.service.copierVersCampagne(body.source, body.cible);
+  }
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) { return this.service.findOne(id); }

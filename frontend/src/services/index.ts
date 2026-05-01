@@ -28,11 +28,12 @@ export const chambresApi = {
 
 // ── Clients ───────────────────────────────────────────
 export const clientsApi = {
-  getAll: () => api.get('/clients'),
+  getAll: (campagne?: string) => api.get(`/clients${campagne ? `?campagne=${encodeURIComponent(campagne)}` : ''}`),
   getOne: (id: number) => api.get(`/clients/${id}`),
   create: (data: any) => api.post('/clients', data),
   update: (id: number, data: any) => api.put(`/clients/${id}`, data),
   delete: (id: number) => api.delete(`/clients/${id}`),
+  copierCampagne: (source: string, cible: string) => api.post('/clients/copier-campagne', { source, cible }),
 };
 
 // ── Réservations ──────────────────────────────────────

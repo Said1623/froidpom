@@ -222,10 +222,10 @@ function NewSortieRow({ clients, entrees, sorties, onSaved, onCancel }: {
 export default function SortiesPage() {
   const { data: sorties, loading, refetch: refetchSorties } = useFetch<Sortie[]>(() => sortiesApi.getAll());
   const { data: entrees } = useFetch<any[]>(() => entreesApi.getAll());
-  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll());
+  const { campagneActive, isInCampagne } = useCampagne();
+  const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const { data: chambres, refetch: refetchChambres } = useFetch<Chambre[]>(() => chambresApi.getAll());
   const { data: stockClients } = useFetch<any[]>(() => stockApi.getParClient());
-  const { campagneActive, isInCampagne } = useCampagne();
 
   const [tab, setTab] = useState<'online' | 'groupe' | 'historique'>('online');
   const [showNew, setShowNew] = useState(false);
