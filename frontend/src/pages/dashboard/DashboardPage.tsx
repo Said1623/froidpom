@@ -8,12 +8,14 @@ import {
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCampagne } from '../../contexts/CampagneContext';
 
 export default function DashboardPage() {
+  const { campagneActive } = useCampagne();
   const token = localStorage.getItem('froidpom_token');
   const { data, loading } = useFetch<DashboardData>(
-    () => token ? dashboardApi.getResume() : Promise.resolve({ data: null }),
-    [token]
+    () => token ? dashboardApi.getResume(campagneActive) : Promise.resolve({ data: null }),
+    [token, campagneActive]
   );
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><Spinner size={36} /></div>;

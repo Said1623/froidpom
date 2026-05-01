@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
+import { Repository, MoreThanOrEqual, Between } from 'typeorm';
 import { Entree } from '../entrees/entree.entity';
 import { Sortie } from '../sorties/sortie.entity';
 import { Paiement } from '../paiements/paiement.entity';
@@ -19,11 +19,16 @@ export class DashboardService {
     private readonly chambresService: ChambresService,
   ) {}
 
-  async getResume() {
+  async getResume(campagne?: string) {
+    const debut = campagne ? `${campagne.split('-')[0]}-09-01` : undefined;
+    const fin   = campagne ? `${campagne.split('-')[1]}-06-01` : undefined;
+
     const chambreStats = await this.chambresService.getStats();
 
     // Paiements
-    const paiements = await this.paiementRepo.find();
+    const paiements = await this.paiementRepo.find({
+      where: debut ? { datePaiement: Between(debut, fin!) as any } : {},
+    });
     const totalPaye = paiements.reduce((s, p) => s + Number(p.montant), 0);
 
     // Réservations
@@ -33,7 +38,9 @@ export class DashboardService {
     const resteAPayer = montantReservations - totalPaye;
 
     // Locations — calcul correct : loué - retourné
-    const locations = await this.locationRepo.find();
+    const locations = await this.locationRepo.find({
+      where: debut ? { dateLocation: Between(debut, fin!) as any } : {},
+    });
     const totalCaissesLouees = locations.reduce((s, l) => s + (Number(l.nbCaisses) || 0), 0);
     const totalCaissesRetournees = locations.reduce((s, l) => s + (Number(l.nbCaissesRetournees) || 0), 0);
     const totalCaissesRestantes = Math.max(0, totalCaissesLouees - totalCaissesRetournees);

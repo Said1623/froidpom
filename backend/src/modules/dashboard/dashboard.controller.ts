@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { DashboardService } from './dashboard.service';
 
@@ -7,6 +7,6 @@ import { DashboardService } from './dashboard.service';
 export class DashboardController {
   constructor(private readonly service: DashboardService) {}
 
-  @Get()
-  getResume() { return this.service.getResume(); }
+  @Get('resume')
+  getResume(@Query('campagne') campagne?: string) { return this.service.getResume(campagne); }
 }

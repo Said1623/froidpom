@@ -13,7 +13,7 @@ export const authApi = {
 
 // ── Dashboard ─────────────────────────────────────────
 export const dashboardApi = {
-  getResume: () => api.get('/dashboard'),
+  getResume: (campagne?: string) => api.get(`/dashboard/resume${campagne ? `?campagne=${encodeURIComponent(campagne)}` : ''}`),
 };
 
 // ── Chambres ──────────────────────────────────────────
