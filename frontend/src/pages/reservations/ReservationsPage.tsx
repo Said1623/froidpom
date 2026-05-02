@@ -160,10 +160,14 @@ function ModalReservation({ reservation, client, clients, campagneActive, onClos
 
           {/* Statut */}
           <Field label="Statut">
-            <div style={{ display:'flex', gap:6', flexWrap:'wrap' }}>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {STATUTS.map(s => (
                 <button key={s.value} onClick={() => setForm({...form, statut: s.value})}
-                  style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${form.statut===s.value?s.color:'var(--c-border)'}`, background:form.statut===s.value?s.bg:'transparent', color:form.statut===s.value?s.color:'var(--c-text2)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${form.statut===s.value?s.color:'var(--c-border)'}`, background:form.statut===s.value?s.bg:'transparent', color:form.statut===s.value?s.color:'var(--c-text2)',
+                   fontSize:12,
+                    fontWeight:600, 
+                    cursor:'pointer'
+                     }}>
                   {s.label}
                 </button>
               ))}
