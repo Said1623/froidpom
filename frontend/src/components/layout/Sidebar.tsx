@@ -6,6 +6,7 @@ import styles from './Sidebar.module.css';
 const NAV = [
   { to: '/', icon: '◈', label: 'Tableau de bord' },
   { to: '/chambres', icon: '❄', label: 'Chambres' },
+  { to: '/chambre-3d', icon: '🏗', label: 'Vue 3D Chambres' },
   { to: '/clients', icon: '👤', label: 'Clients' },
   { to: '/reservations', icon: '📋', label: 'Réservations' },
   { to: '/entrees', icon: '↓', label: 'Entrées' },

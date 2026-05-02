@@ -13,6 +13,7 @@ import LocationsPage from './pages/locations/LocationsPage';
 import StockPage from './pages/stock/StockPage';
 import VentesPage from './pages/ventes/VentesPage';
 import HistoriquePaiementsPage from './pages/historique-paiements/HistoriquePaiementsPage';
+import ChambreVue3DPage from './pages/chambre-3d/ChambreVue3DPage';
 
 function LoginPage() {
   async function handleLogin() {
@@ -98,6 +99,7 @@ function AppRoutes() {
         <Route path="locations" element={<LocationsPage />} />
         <Route path="stock" element={<StockPage />} />
         <Route path="ventes" element={<VentesPage />} />
+        <Route path="chambre-3d" element={<ChambreVue3DPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
