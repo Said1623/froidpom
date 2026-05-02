@@ -33,7 +33,7 @@ function ModalPaiement({ paiement, clientDefaut, clients, onClose, onSaved }: {
     clientId: paiement ? String(paiement.client.id) : clientDefaut ? String(clientDefaut.id) : '',
     datePaiement: paiement ? (paiement as any).datePaiement : today,
     montant: paiement ? String(paiement.montant) : '',
-    modePaiement: paiement ? paiement.modePaiement : 'especes',
+    modePaiement: paiement ? (paiement as any).modePaiement : 'especes',
     reference: paiement ? ((paiement as any).reference || '') : '',
     notes: paiement ? ((paiement as any).notes || '') : '',
   });
@@ -49,7 +49,7 @@ function ModalPaiement({ paiement, clientDefaut, clients, onClose, onSaved }: {
         montant: parseFloat(form.montant), modePaiement: form.modePaiement,
         reference: form.reference || undefined, notes: form.notes || undefined,
       };
-      if (isEdit) await paiementsApi.update(paiement!.id, dto);
+      if (isEdit) await (paiementsApi as any).update(paiement!.id, dto);
       else await paiementsApi.create(dto);
       toast.success(isEdit ? 'Paiement modifié' : 'Paiement enregistré');
       onSaved(); onClose();

@@ -74,6 +74,7 @@ export const paiementsApi = {
 // ── Locations ─────────────────────────────────────────
 export const locationsApi = {
   getAll: () => api.get('/locations'),
+  getAllRetours: () => api.get('/locations/retours').then(r => r.data),
   getOne: (id: number) => api.get(`/locations/${id}`),
   getSuiviGlobal: () => api.get('/locations/suivi'),
   getSuiviClient: (id: number) => api.get(`/locations/suivi/${id}`),

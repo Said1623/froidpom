@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Location, TypeCaisse } from './location.entity';
+import { LocationRetour } from './location-retour.entity';
 import { IsInt, IsOptional, IsString, IsDateString, IsNumber, IsEnum, Min } from 'class-validator';
 
 export class CreateLocationDto {
@@ -16,17 +17,31 @@ export class CreateLocationDto {
 
 export class RetourLocationDto {
   @IsInt() @Min(1) nbRetournees: number;
+  @IsOptional() @IsString() dateRetour?: string;
   @IsOptional() @IsString() notes?: string;
 }
 
 @Injectable()
 export class LocationsService {
-  constructor(@InjectRepository(Location) private readonly repo: Repository<Location>) {}
+  constructor(
+    @InjectRepository(Location) private readonly repo: Repository<Location>,
+    @InjectRepository(LocationRetour) private readonly retourRepo: Repository<LocationRetour>,
+  ) {}
 
   findAll(clientId?: number) {
     const where: any = {};
     if (clientId) where.client = { id: clientId };
     return this.repo.find({ where, order: { dateLocation: 'DESC' }, relations: ['client'] });
+  }
+
+  // Récupérer tous les retours (historique)
+  findAllRetours(clientId?: number) {
+    const where: any = clientId ? { client: { id: clientId } } : {};
+    return this.retourRepo.find({
+      where,
+      order: { dateRetour: 'DESC', createdAt: 'DESC' },
+      relations: ['client', 'location'],
+    });
   }
 
   async findOne(id: number) {
@@ -56,9 +71,25 @@ export class LocationsService {
         `Impossible de retourner ${dto.nbRetournees} caisses. Restantes: ${restantes}`
       );
     }
+
+    // 1. Mettre à jour le compteur sur la location
     location.nbCaissesRetournees += dto.nbRetournees;
     if (dto.notes) location.notes = dto.notes;
-    return this.repo.save(location);
+    await this.repo.save(location);
+
+    // 2. Enregistrer le retour dans l'historique
+    const dateRetour = dto.dateRetour || new Date().toISOString().split('T')[0];
+    const retour = this.retourRepo.create({
+      location: { id } as any,
+      client: { id: location.client.id } as any,
+      dateRetour,
+      nbRetournees: dto.nbRetournees,
+      typeCaisse: location.typeCaisse,
+      notes: dto.notes,
+    });
+    await this.retourRepo.save(retour);
+
+    return location;
   }
 
   async remove(id: number) {
@@ -70,25 +101,6 @@ export class LocationsService {
     const locations = await this.findAll(clientId);
     const totalLoue = locations.reduce((s, l) => s + l.nbCaisses, 0);
     const totalRetourne = locations.reduce((s, l) => s + l.nbCaissesRetournees, 0);
-    return {
-      locations,
-      totalLoue,
-      totalRetourne,
-      totalRestant: totalLoue - totalRetourne,
-    };
-  }
-
-  async getSuiviGlobal() {
-    const locations = await this.repo.find({ relations: ['client'] });
-    const totalLoue = locations.reduce((s, l) => s + l.nbCaisses, 0);
-    const totalRetourne = locations.reduce((s, l) => s + l.nbCaissesRetournees, 0);
-    return {
-      totalLoue,
-      totalRetourne,
-      totalRestant: totalLoue - totalRetourne,
-      enRetard: locations.filter(
-        (l) => l.dateRetourPrevu && new Date(l.dateRetourPrevu) < new Date() && l.nbCaissesRestantes > 0
-      ),
-    };
+    return { locations, totalLoue, totalRetourne, totalRestant: totalLoue - totalRetourne };
   }
 }

@@ -1,8 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Controller, Get, Post, Body, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
 import { LocationsService, CreateLocationDto, RetourLocationDto } from './locations.service';
 
-@UseGuards(AuthGuard('jwt'))
 @Controller('locations')
 export class LocationsController {
   constructor(private readonly service: LocationsService) {}
@@ -12,26 +10,23 @@ export class LocationsController {
     return this.service.findAll(clientId ? parseInt(clientId) : undefined);
   }
 
-  @Get('suivi')
-  getSuiviGlobal() { return this.service.getSuiviGlobal(); }
-
-  @Get('suivi/:clientId')
-  getSuiviClient(@Param('clientId', ParseIntPipe) clientId: number) {
-    return this.service.getSuiviClient(clientId);
+  @Get('retours')
+  findAllRetours(@Query('clientId') clientId?: string) {
+    return this.service.findAllRetours(clientId ? parseInt(clientId) : undefined);
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) { return this.service.findOne(id); }
-
   @Post()
-  create(@Body() dto: CreateLocationDto) { return this.service.create(dto); }
+  create(@Body() dto: CreateLocationDto) {
+    return this.service.create(dto);
+  }
 
-  @Put(':id/retour')
-  enregistrerRetour(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: RetourLocationDto,
-  ) { return this.service.enregistrerRetour(id, dto); }
+  @Post(':id/retour')
+  enregistrerRetour(@Param('id', ParseIntPipe) id: number, @Body() dto: RetourLocationDto) {
+    return this.service.enregistrerRetour(id, dto);
+  }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) { return this.service.remove(id); }
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
+  }
 }

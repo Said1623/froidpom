@@ -252,11 +252,13 @@ interface ClientLoc {
 // ── Page principale ───────────────────────────────────
 export default function LocationsPage() {
   const { data: locations, loading, refetch } = useFetch<Location[]>(() => locationsApi.getAll());
+  const { data: retours, refetch: refetchRetours } = useFetch<any[]>(() => locationsApi.getAllRetours ? locationsApi.getAllRetours() : Promise.resolve([]));
   const { campagneActive, isInCampagne } = useCampagne();
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const { data: reservations } = useFetch<Reservation[]>(() => reservationsApi.getAll());
 
   const [tab, setTab] = useState<'session'|'suivi'|'historique'>('session');
+  const [histTab, setHistTab] = useState<'locations'|'retours'>('locations');
   const [dateOp, setDateOp] = useState(new Date().toISOString().split('T')[0]);
   const [search, setSearch] = useState('');
   const [searchSuivi, setSearchSuivi] = useState('');
@@ -358,6 +360,7 @@ export default function LocationsPage() {
 
   const suiviFiltres = suivi.filter(s => (s as any).client.nom.toLowerCase().includes(searchSuivi.toLowerCase()));
   const filteredLoc = (locations||[]).filter(l => (filterClient ? l.client.id===parseInt(filterClient) : true) && isInCampagne(l.dateLocation));
+  const filteredRetours = (retours||[]).filter((r:any) => (filterClient ? r.client?.id===parseInt(filterClient) : true) && isInCampagne(r.dateRetour));
 
   const modifies = rows.filter(r => r.modified && (r.nbBois>0||r.nbPlast>0) && !r.done);
   const totalResaB = rows.reduce((s,r)=>s+r.resaB,0);
@@ -419,7 +422,7 @@ export default function LocationsPage() {
         {[
           {id:'session', label:'⚡ Session location'},
           {id:'suivi', label:`📊 Suivi (${suiviFiltres.length})`},
-          {id:'historique', label:`📋 Historique (${filteredLoc.length})`},
+          {id:'historique', label:`📋 Historique (${filteredLoc.length} loc · ${filteredRetours.length} ret)`},
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:7, border:'none', fontSize:13, fontWeight:600, cursor:'pointer', background:tab===t.id?'var(--c-primary-glow)':'transparent', color:tab===t.id?'var(--c-primary)':'var(--c-text2)' }}>
@@ -532,6 +535,16 @@ export default function LocationsPage() {
       {/* ══ HISTORIQUE ══ */}
       {tab === 'historique' && (
         <>
+          {/* Sous-onglets */}
+          <div style={{ display:'flex', gap:4, background:'var(--c-bg2)', border:'1px solid var(--c-border)', borderRadius:8, padding:3, width:'fit-content', marginBottom:14 }}>
+            {[{id:'locations',label:`📦 Locations (${filteredLoc.length})`},{id:'retours',label:`↩ Retours (${filteredRetours.length})`}].map(t=>(
+              <button key={t.id} onClick={()=>setHistTab(t.id as any)}
+                style={{ padding:'5px 14px', borderRadius:6, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', background:histTab===t.id?'var(--c-surface)':'transparent', color:histTab===t.id?'var(--c-primary)':'var(--c-text2)' }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display:'flex', gap:10, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
             <select value={filterClient} onChange={e=>setFilterClient(e.target.value)}
               style={{ background:'var(--c-bg2)', border:'1px solid var(--c-border2)', borderRadius:10, color:'var(--c-text)', padding:'8px 12px', fontSize:13, outline:'none' }}>
@@ -539,49 +552,96 @@ export default function LocationsPage() {
               {clients?.map(c=><option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
             <div style={{ marginLeft:'auto' }}>
-              <BtnPdf onClick={() => pdfLocations(filteredLoc)} label="⬇ Exporter PDF" disabled={filteredLoc.length===0} />
+              <BtnPdf onClick={() => pdfLocations(filteredLoc)} label="⬇ PDF Locations" disabled={filteredLoc.length===0} />
             </div>
           </div>
-          <div style={{ overflowX:'auto', border:'1px solid var(--c-border)', borderRadius:10 }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', minWidth:600 }}>
-              <thead>
-                <tr style={{ background:'var(--c-bg2)' }}>
-                  {['Date','Client','Type','Loué','Retourné','Restant',''].map(h => (
-                    <th key={h} style={{ padding:'11px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'var(--c-text2)', textTransform:'uppercase', letterSpacing:'.5px', borderBottom:'1px solid var(--c-border)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLoc.length===0&&<tr><td colSpan={7} style={{padding:40,textAlign:'center',color:'var(--c-text3)'}}>Aucune location</td></tr>}
-                {filteredLoc.map((l,i) => {
-                  const restant = Math.max(0,(Number(l.nbCaisses)||0)-(Number(l.nbCaissesRetournees)||0));
-                  const typeCol = !l.typeCaisse||l.typeCaisse==='bois'?'var(--c-warning)':'var(--c-primary)';
-                  return (
-                    <tr key={l.id} style={{ borderBottom:'1px solid var(--c-border)', background:i%2===0?'':'rgba(255,255,255,.01)' }}>
-                      <td style={{ padding:'10px 12px', fontSize:13 }}>{format(new Date(l.dateLocation),'dd/MM/yyyy')}</td>
-                      <td style={{ padding:'10px 12px', fontWeight:600 }}>{l.client.nom}</td>
-                      <td style={{ padding:'10px 12px', fontWeight:600, color:typeCol }}>
-                        {!l.typeCaisse||l.typeCaisse==='bois'?'🪵 Bois':'🧴 Plastique'}
-                      </td>
-                      <td style={{ padding:'10px 12px' }}><strong>{l.nbCaisses}</strong></td>
-                      <td style={{ padding:'10px 12px', color:'var(--c-success)' }}>{l.nbCaissesRetournees||0}</td>
+
+          {/* Tableau Locations */}
+          {histTab === 'locations' && (
+            <div style={{ overflowX:'auto', border:'1px solid var(--c-border)', borderRadius:10 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', minWidth:600 }}>
+                <thead>
+                  <tr style={{ background:'var(--c-bg2)' }}>
+                    {['Date location','Client','Type','Loué','Retourné','Restant',''].map(h => (
+                      <th key={h} style={{ padding:'11px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'var(--c-text2)', textTransform:'uppercase', letterSpacing:'.5px', borderBottom:'1px solid var(--c-border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLoc.length===0&&<tr><td colSpan={7} style={{padding:40,textAlign:'center',color:'var(--c-text3)'}}>Aucune location</td></tr>}
+                  {filteredLoc.map((l,i) => {
+                    const restant = Math.max(0,(Number(l.nbCaisses)||0)-(Number(l.nbCaissesRetournees)||0));
+                    const typeCol = !l.typeCaisse||l.typeCaisse==='bois'?'var(--c-warning)':'var(--c-primary)';
+                    return (
+                      <tr key={l.id} style={{ borderBottom:'1px solid var(--c-border)', background:i%2===0?'':'rgba(255,255,255,.01)' }}>
+                        <td style={{ padding:'10px 12px', fontSize:13 }}>{format(new Date(l.dateLocation),'dd/MM/yyyy')}</td>
+                        <td style={{ padding:'10px 12px', fontWeight:600 }}>{l.client.nom}</td>
+                        <td style={{ padding:'10px 12px', fontWeight:600, color:typeCol }}>{!l.typeCaisse||l.typeCaisse==='bois'?'🪵 Bois':'🧴 Plastique'}</td>
+                        <td style={{ padding:'10px 12px' }}><strong>{l.nbCaisses}</strong></td>
+                        <td style={{ padding:'10px 12px', color:'var(--c-success)' }}>{l.nbCaissesRetournees||0}</td>
+                        <td style={{ padding:'10px 12px' }}><strong style={{ color:restant>0?'var(--c-warning)':'var(--c-success)' }}>{restant}</strong></td>
+                        <td style={{ padding:'10px 12px' }}>
+                          <div style={{ display:'flex', gap:6 }}>
+                            {restant>0&&<button onClick={()=>setClientRetour(l.client)}
+                              style={{ background:'rgba(46,207,138,.15)', border:'1px solid rgba(46,207,138,.3)', color:'var(--c-success)', borderRadius:6, padding:'4px 8px', fontSize:11, fontWeight:600, cursor:'pointer' }}>↩</button>}
+                            <button onClick={async()=>{if(!confirm('Supprimer ?')) return;try{await locationsApi.delete(l.id);toast.success('Supprimée');refetch();}catch(e:any){toast.error(e?.response?.data?.message||'Erreur');}}}
+                              style={{ background:'rgba(240,90,90,.12)', border:'1px solid rgba(240,90,90,.25)', color:'var(--c-danger)', borderRadius:6, width:28, height:28, fontSize:12, cursor:'pointer' }}>✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Tableau Retours */}
+          {histTab === 'retours' && (
+            <div style={{ overflowX:'auto', border:'1px solid var(--c-border)', borderRadius:10 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', minWidth:500 }}>
+                <thead>
+                  <tr style={{ background:'var(--c-bg2)' }}>
+                    {['Date retour','Client','Type','Nb retournées','Notes'].map(h => (
+                      <th key={h} style={{ padding:'11px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'var(--c-text2)', textTransform:'uppercase', letterSpacing:'.5px', borderBottom:'1px solid var(--c-border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRetours.length===0&&<tr><td colSpan={5} style={{padding:40,textAlign:'center',color:'var(--c-text3)'}}>Aucun retour enregistré</td></tr>}
+                  {filteredRetours.map((r:any,i:number) => {
+                    const typeCol = !r.typeCaisse||r.typeCaisse==='bois'?'var(--c-warning)':'var(--c-primary)';
+                    return (
+                      <tr key={r.id} style={{ borderBottom:'1px solid var(--c-border)', background:i%2===0?'':'rgba(255,255,255,.01)' }}>
+                        <td style={{ padding:'10px 12px', fontSize:13, fontWeight:600 }}>
+                          <span style={{ color:'var(--c-success)' }}>↩ {format(new Date(r.dateRetour),'dd/MM/yyyy')}</span>
+                        </td>
+                        <td style={{ padding:'10px 12px', fontWeight:600 }}>{r.client?.nom}</td>
+                        <td style={{ padding:'10px 12px', fontWeight:600, color:typeCol }}>{!r.typeCaisse||r.typeCaisse==='bois'?'🪵 Bois':'🧴 Plastique'}</td>
+                        <td style={{ padding:'10px 12px' }}>
+                          <strong style={{ color:'var(--c-success)', fontSize:15 }}>+{r.nbRetournees}</strong>
+                        </td>
+                        <td style={{ padding:'10px 12px', color:'var(--c-text2)', fontSize:12 }}>{r.notes||'—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                {filteredRetours.length > 0 && (
+                  <tfoot>
+                    <tr style={{ background:'var(--c-bg2)', borderTop:'2px solid var(--c-border)' }}>
+                      <td colSpan={3} style={{ padding:'10px 12px', fontWeight:700, fontSize:13 }}>TOTAL RETOURNÉ</td>
                       <td style={{ padding:'10px 12px' }}>
-                        <strong style={{ color:restant>0?'var(--c-warning)':'var(--c-success)' }}>{restant}</strong>
+                        <strong style={{ color:'var(--c-success)', fontSize:15 }}>
+                          +{filteredRetours.reduce((s:number,r:any)=>s+(r.nbRetournees||0),0)}
+                        </strong>
                       </td>
-                      <td style={{ padding:'10px 12px' }}>
-                        <div style={{ display:'flex', gap:6 }}>
-                          {restant>0&&<button onClick={()=>setClientRetour(l.client)}
-                            style={{ background:'rgba(46,207,138,.15)', border:'1px solid rgba(46,207,138,.3)', color:'var(--c-success)', borderRadius:6, padding:'4px 8px', fontSize:11, fontWeight:600, cursor:'pointer' }}>↩</button>}
-                          <button onClick={async()=>{if(!confirm('Supprimer ?')) return;try{await locationsApi.delete(l.id);toast.success('Supprimée');refetch();}catch(e:any){toast.error(e?.response?.data?.message||'Erreur');}}}
-                            style={{ background:'rgba(240,90,90,.12)', border:'1px solid rgba(240,90,90,.25)', color:'var(--c-danger)', borderRadius:6, width:28, height:28, fontSize:12, cursor:'pointer' }}>✕</button>
-                        </div>
-                      </td>
+                      <td></td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
         </>
       )}
 
