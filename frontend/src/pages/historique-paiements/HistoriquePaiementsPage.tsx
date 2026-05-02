@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { paiementsApi, clientsApi } from '../../services';
-import { PageHeader, Spinner } from '../../components/ui/UI';
+import { Spinner } from '../../components/ui/UI';
 import { BtnPdf } from '../../components/ui/BtnPdf';
 import { pdfPaiements } from '../../services/pdfService';
 import type { Paiement, Client } from '../../types';
@@ -10,10 +10,10 @@ import toast from 'react-hot-toast';
 import { useCampagne } from '../../contexts/CampagneContext';
 
 const MODES = [
-  { value: 'especes', label: '💵 Espèces' },
-  { value: 'virement', label: '🏦 Virement' },
-  { value: 'cheque', label: '📄 Chèque' },
-  { value: 'carte', label: '💳 Carte' },
+  { value: 'especes', label: '💵 Espèces', color: 'var(--c-warning)' },
+  { value: 'virement', label: '🏦 Virement', color: 'var(--c-primary)' },
+  { value: 'cheque',  label: '📄 Chèque',  color: 'var(--c-accent)' },
+  { value: 'carte',   label: '💳 Carte',   color: 'var(--c-success)' },
 ];
 
 function fmt(n: number) {
@@ -43,6 +43,7 @@ export default function HistoriquePaiementsPage() {
   });
 
   const totalFiltre = filtered.reduce((s, p) => s + Number(p.montant), 0);
+  const moyennePaiement = filtered.length > 0 ? totalFiltre / filtered.length : 0;
 
   async function handleDelete(id: number, nom: string) {
     if (!confirm(`Supprimer le paiement de ${nom} ?`)) return;
@@ -56,23 +57,31 @@ export default function HistoriquePaiementsPage() {
 
   return (
     <div className="fade-in">
-      <PageHeader
-        title="Historique des paiements"
-        subtitle={`Campagne ${campagneActive} — ${filtered.length} paiement(s)`}
-      />
-
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-        {[
-          { label: 'Nb paiements', val: String(filtered.length), color: 'var(--c-primary)' },
-          { label: 'Total encaissé', val: `${fmt(totalFiltre)} Dh`, color: 'var(--c-success)' },
-          { label: 'Moyenne / paiement', val: filtered.length > 0 ? `${fmt(totalFiltre / filtered.length)} Dh` : '—', color: 'var(--c-warning)' },
-        ].map(k => (
-          <div key={k.label} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 12, padding: '14px 18px' }}>
-            <div style={{ fontSize: 11, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>{k.label}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: k.color }}>{k.val}</div>
+      {/* ── HEADER ── */}
+      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 14, padding: '18px 22px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, margin: 0 }}>Historique des paiements</h1>
+            <div style={{ fontSize: 11, color: 'var(--c-text3)', marginTop: 3 }}>
+              Campagne {campagneActive} — {filtered.length} paiement(s)
+            </div>
           </div>
-        ))}
+          <BtnPdf onClick={() => pdfPaiements(filtered, totalFiltre)} label="⬇ Exporter PDF" disabled={!filtered.length} />
+        </div>
+
+        {/* KPIs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {[
+            { label: 'Nb paiements', val: String(filtered.length), color: 'var(--c-primary)' },
+            { label: 'Total encaissé', val: `${fmt(totalFiltre)} Dh`, color: 'var(--c-success)' },
+            { label: 'Moyenne / paiement', val: filtered.length > 0 ? `${fmt(moyennePaiement)} Dh` : '—', color: 'var(--c-warning)' },
+          ].map(k => (
+            <div key={k.label} style={{ background: 'var(--c-bg2)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>{k.label}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: k.color }}>{k.val}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Filtres */}
@@ -98,9 +107,6 @@ export default function HistoriquePaiementsPage() {
             ✕ Réinitialiser
           </button>
         )}
-        <div style={{ marginLeft: 'auto' }}>
-          <BtnPdf onClick={() => pdfPaiements(filtered, totalFiltre)} label="⬇ Exporter PDF" disabled={!filtered.length} />
-        </div>
       </div>
 
       {/* Tableau */}
@@ -119,26 +125,29 @@ export default function HistoriquePaiementsPage() {
                 Aucun paiement pour la campagne {campagneActive}
               </td></tr>
             )}
-            {filtered.map((p, i) => (
-              <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
-                <td style={{ padding: '11px 14px', fontSize: 13 }}>{format(new Date(p.datePaiement), 'dd/MM/yyyy')}</td>
-                <td style={{ padding: '11px 14px', fontWeight: 600 }}>{p.client.nom}</td>
-                <td style={{ padding: '11px 14px' }}>
-                  <strong style={{ color: 'var(--c-success)', fontSize: 15 }}>{fmt(Number(p.montant))} Dh</strong>
-                </td>
-                <td style={{ padding: '11px 14px' }}>
-                  <span style={{ background: 'var(--c-primary-glow)', color: 'var(--c-primary)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
-                    {MODES.find(m => m.value === p.modePaiement)?.label || p.modePaiement}
-                  </span>
-                </td>
-                <td style={{ padding: '11px 14px', color: 'var(--c-text2)', fontSize: 12 }}>{(p as any).reference || '—'}</td>
-                <td style={{ padding: '11px 14px', color: 'var(--c-text2)', fontSize: 12, maxWidth: 200 }}>{(p as any).notes || '—'}</td>
-                <td style={{ padding: '11px 14px' }}>
-                  <button onClick={() => handleDelete(p.id, p.client.nom)}
-                    style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 28, height: 28, fontSize: 12, cursor: 'pointer' }}>✕</button>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((p, i) => {
+              const mode = MODES.find(m => m.value === p.modePaiement);
+              return (
+                <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', background: i % 2 === 0 ? '' : 'rgba(255,255,255,.01)' }}>
+                  <td style={{ padding: '11px 14px', fontSize: 13 }}>{format(new Date(p.datePaiement), 'dd/MM/yyyy')}</td>
+                  <td style={{ padding: '11px 14px', fontWeight: 600 }}>{p.client.nom}</td>
+                  <td style={{ padding: '11px 14px' }}>
+                    <strong style={{ color: 'var(--c-success)', fontSize: 15 }}>{fmt(Number(p.montant))} Dh</strong>
+                  </td>
+                  <td style={{ padding: '11px 14px' }}>
+                    <span style={{ background: `${mode?.color}22`, color: mode?.color, padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, border: `1px solid ${mode?.color}44` }}>
+                      {mode?.label || p.modePaiement}
+                    </span>
+                  </td>
+                  <td style={{ padding: '11px 14px', color: 'var(--c-text2)', fontSize: 12 }}>{(p as any).reference || '—'}</td>
+                  <td style={{ padding: '11px 14px', color: 'var(--c-text2)', fontSize: 12, maxWidth: 200 }}>{(p as any).notes || '—'}</td>
+                  <td style={{ padding: '11px 14px' }}>
+                    <button onClick={() => handleDelete(p.id, p.client.nom)}
+                      style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 28, height: 28, fontSize: 12, cursor: 'pointer' }}>✕</button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           {filtered.length > 0 && (
             <tfoot>
