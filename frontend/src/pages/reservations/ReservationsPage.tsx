@@ -50,7 +50,7 @@ function ModalReservation({ reservation, client, clients, campagneActive, onClos
     prixUnitairePlastique: String(reservation?.prixUnitairePlastique || 0),
     nbCaissesTranger: String((reservation as any)?.nbCaissesTranger || 0),
     prixUnitaireTranger: String((reservation as any)?.prixUnitaireTranger || 0),
-    statut: reservation?.statut || 'en_attente',
+    statut: (reservation as any)?.statut || 'en_attente',
   });
   const [saving, setSaving] = useState(false);
 
@@ -163,11 +163,7 @@ function ModalReservation({ reservation, client, clients, campagneActive, onClos
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {STATUTS.map(s => (
                 <button key={s.value} onClick={() => setForm({...form, statut: s.value})}
-                  style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${form.statut===s.value?s.color:'var(--c-border)'}`, background:form.statut===s.value?s.bg:'transparent', color:form.statut===s.value?s.color:'var(--c-text2)',
-                   fontSize:12,
-                    fontWeight:600, 
-                    cursor:'pointer'
-                     }}>
+                  style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${form.statut===s.value?s.color:'var(--c-border)'}`, background:form.statut===s.value?s.bg:'transparent', color:form.statut===s.value?s.color:'var(--c-text2)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                   {s.label}
                 </button>
               ))}
