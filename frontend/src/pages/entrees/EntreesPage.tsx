@@ -47,9 +47,9 @@ export default function EntreesPage() {
     reservations.filter(r => isInCampagne((r as any).dateReservation)).forEach(r => { resaMap[r.client.id] = r; });
     return clients.filter(c => resaMap[c.id]).map(client => {
       const resa = resaMap[client.id];
-      const dejaB = entrees.filter(e => e.client.id===client.id&&(e as any).typeCaisse==='bois').reduce((s,e)=>s+e.nbCaisses,0);
-      const dejaP = entrees.filter(e => e.client.id===client.id&&(e as any).typeCaisse==='plastique').reduce((s,e)=>s+e.nbCaisses,0);
-      const dejaT = entrees.filter(e => e.client.id===client.id&&(e as any).typeCaisse==='tranger').reduce((s,e)=>s+e.nbCaisses,0);
+      const dejaB = entrees.filter(e => e.client.id===client.id&&(e as any).typeCaisse==='bois'&&isInCampagne(e.dateEntree)).reduce((s,e)=>s+e.nbCaisses,0);
+      const dejaP = entrees.filter(e => e.client.id===client.id&&(e as any).typeCaisse==='plastique'&&isInCampagne(e.dateEntree)).reduce((s,e)=>s+e.nbCaisses,0);
+      const dejaT = entrees.filter(e => e.client.id===client.id&&(e as any).typeCaisse==='tranger'&&isInCampagne(e.dateEntree)).reduce((s,e)=>s+e.nbCaisses,0);
       const resaB=resa?.nbCaissesBois||0, resaP=(resa as any)?.nbCaissesPластique||0, resaT=(resa as any)?.nbCaissesTranger||0;
       return { client, bois:String(Math.max(0,resaB-dejaB)), plastique:String(Math.max(0,resaP-dejaP)), tranger:String(Math.max(0,resaT-dejaT)), dejaB,dejaP,dejaT,resaB,resaP,resaT, selected:false,done:false,error:'' };
     });
