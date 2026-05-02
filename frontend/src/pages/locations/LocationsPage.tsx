@@ -21,6 +21,7 @@ function ModalRetour({ client, locations, onClose, onSaved }: {
   const [nbPlast, setNbPlast] = useState(String(plastRestant));
   const [prixBois, setPrixBois] = useState('30');
   const [prixPlast, setPrixPlast] = useState('55');
+  const [dateRetour, setDateRetour] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
   const vBois = parseInt(nbBois)||0;
   const vPlast = parseInt(nbPlast)||0;
@@ -44,7 +45,7 @@ function ModalRetour({ client, locations, onClose, onSaved }: {
           if (reste <= 0) break;
           const dispo = Math.max(0,(Number(loc.nbCaisses)||0)-(Number(loc.nbCaissesRetournees)||0));
           const n = Math.min(reste, dispo);
-          await locationsApi.enregistrerRetour(loc.id, { nbRetournees: n });
+          await locationsApi.enregistrerRetour(loc.id, { nbRetournees: n, dateRetour });
           reste -= n;
         }
       }
@@ -56,32 +57,48 @@ function ModalRetour({ client, locations, onClose, onSaved }: {
     finally { setSaving(false); }
   }
 
-  const inp = (label: string, val: string, onChange: (v:string)=>void, max: number, color: string) => (
-    <div style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
-      <div style={{ width:100, fontWeight:700, color, fontSize:14 }}>{label}</div>
-      <div style={{ textAlign:'center', width:70 }}>
-        <div style={{ fontSize:10, color:'var(--c-text3)', marginBottom:2 }}>STOCK</div>
-        <div style={{ fontWeight:800, fontSize:22, color }}>{max}</div>
-      </div>
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:10, color:'var(--c-text3)', marginBottom:4 }}>À RETOURNER</div>
-        <input type="number" min="0" max={max} value={val} onFocus={e=>e.target.select()} onChange={e=>onChange(e.target.value)}
-          style={{ background:'#1a2540', border:`2px solid ${(parseInt(val)||0)>max?'var(--c-danger)':(parseInt(val)||0)>0?color:'rgba(100,140,255,.3)'}`, borderRadius:8, color:'#e8edf8', padding:'8px 0', fontSize:20, fontWeight:800, width:'100%', outline:'none', textAlign:'center' }} />
-      </div>
-      <div style={{ textAlign:'center', width:70 }}>
-        <div style={{ fontSize:10, color:'var(--c-text3)', marginBottom:2 }}>RESTANT</div>
-        <div style={{ fontWeight:800, fontSize:22, color:Math.max(0,max-(parseInt(val)||0))===0?'var(--c-success)':color }}>
-          {Math.max(0, max-(parseInt(val)||0))}
+  const inp = (label: string, val: string, onChange: (v:string)=>void, max: number, color: string) => {
+    const saisi = parseInt(val) || 0;
+    const restant = Math.max(0, max - saisi);
+    const dep = saisi > max;
+    return (
+      <div style={{ padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+          <div style={{ fontWeight:700, color, fontSize:15, width:110 }}>{label}</div>
+          <div style={{ fontSize:13, color:'var(--c-text2)' }}>
+            En stock : <strong style={{ color, fontSize:16 }}>{max}</strong>
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, alignItems:'end' }}>
+          <div>
+            <div style={{ fontSize:10, color:'var(--c-text3)', fontWeight:700, textTransform:'uppercase', marginBottom:6 }}>Nb retourné</div>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={val}
+              onChange={e => onChange(e.target.value.replace(/[^0-9]/g,''))}
+              onFocus={e => e.target.select()}
+              placeholder="0"
+              style={{ background:'#1a2540', border:`2px solid ${dep?'var(--c-danger)':saisi>0?color:'rgba(100,140,255,.3)'}`, borderRadius:10, color:dep?'var(--c-danger)':'#e8edf8', padding:'12px 0', fontSize:26, fontWeight:800, width:'100%', outline:'none', textAlign:'center', transition:'border-color .15s' }} />
+            {dep && <div style={{ fontSize:11, color:'var(--c-danger)', marginTop:4, textAlign:'center' }}>⚠ Max {max}</div>}
+          </div>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:10, color:'var(--c-text3)', fontWeight:700, textTransform:'uppercase', marginBottom:6 }}>Restant après</div>
+            <div style={{ background:'var(--c-bg2)', borderRadius:10, padding:'12px 0', fontSize:26, fontWeight:800, color:dep?'var(--c-danger)':restant===0?'var(--c-success)':color }}>
+              {dep ? '⚠' : restant}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize:10, color:'var(--c-text3)', fontWeight:700, textTransform:'uppercase', marginBottom:6 }}>Prix/u si non ret.</div>
+            <input type="text" inputMode="numeric"
+              value={label.includes('Bois') ? prixBois : prixPlast}
+              onChange={e => label.includes('Bois') ? setPrixBois(e.target.value) : setPrixPlast(e.target.value)}
+              style={{ background:'#1a2540', border:'1px solid rgba(100,140,255,.2)', borderRadius:10, color:'#e8edf8', padding:'12px 8px', fontSize:16, fontWeight:700, width:'100%', outline:'none', textAlign:'center' }} />
+          </div>
         </div>
       </div>
-      <div style={{ width:100 }}>
-        <div style={{ fontSize:10, color:'var(--c-text3)', marginBottom:4 }}>PRIX/U (MAD)</div>
-        <input type="number" min="0" value={label.includes('Bois')?prixBois:prixPlast}
-          onChange={e => label.includes('Bois') ? setPrixBois(e.target.value) : setPrixPlast(e.target.value)}
-          style={{ background:'#1a2540', border:'1px solid rgba(100,140,255,.2)', borderRadius:6, color:'#e8edf8', padding:'6px 8px', fontSize:13, width:'100%', outline:'none', textAlign:'center' }} />
-      </div>
-    </div>
-  );
+    );
+  };
 
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -92,7 +109,14 @@ function ModalRetour({ client, locations, onClose, onSaved }: {
             <div style={{ fontSize:16, fontWeight:700 }}>↩ Retour de caisses</div>
             <div style={{ fontSize:13, color:'var(--c-text2)', marginTop:2 }}>{client.nom}</div>
           </div>
-          <button onClick={onClose} style={{ background:'#1f2a4a', border:'none', color:'#8fa3cc', width:30, height:30, borderRadius:6, cursor:'pointer', fontSize:16 }}>✕</button>
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            <div>
+              <div style={{ fontSize:10, color:'var(--c-text3)', fontWeight:700, textTransform:'uppercase', marginBottom:4 }}>Date retour</div>
+              <input type="date" value={dateRetour} onChange={e => setDateRetour(e.target.value)}
+                style={{ background:'#1f2a4a', border:'1px solid rgba(100,140,255,.3)', borderRadius:8, color:'#e8edf8', padding:'7px 10px', fontSize:13, outline:'none' }} />
+            </div>
+            <button onClick={onClose} style={{ background:'#1f2a4a', border:'none', color:'#8fa3cc', width:30, height:30, borderRadius:6, cursor:'pointer', fontSize:16 }}>✕</button>
+          </div>
         </div>
         {boisRestant > 0 && inp('🪵 Bois', nbBois, setNbBois, boisRestant, 'var(--c-warning)')}
         {plastRestant > 0 && inp('🧴 Plastique', nbPlast, setNbPlast, plastRestant, 'var(--c-primary)')}
