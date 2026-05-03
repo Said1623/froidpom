@@ -50,6 +50,7 @@ export const entreesApi = {
   getAll: () => api.get('/entrees'),
   getOne: (id: number) => api.get(`/entrees/${id}`),
   create: (data: any) => api.post('/entrees', data),
+  update: (id: number, data: any) => api.put(`/entrees/${id}`, data),
   delete: (id: number) => api.delete(`/entrees/${id}`),
 };
 

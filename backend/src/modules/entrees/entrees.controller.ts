@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { EntreesService } from './entrees.service';
 
@@ -23,6 +23,11 @@ export class EntreesController {
 
   @Post()
   create(@Body() body: any) { return this.service.create(body); }
+
+  @Put(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+    return this.service.update(id, body);
+  }
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) { return this.service.remove(id); }

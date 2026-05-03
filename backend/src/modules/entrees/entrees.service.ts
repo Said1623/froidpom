@@ -42,11 +42,36 @@ export class EntreesService {
       notes: dto.notes,
     });
 
-  
     const saved = await this.repo.save(entree);
     await this.chambresService.updateStock(dto.chambreId, dto.nbCaisses);
     // @ts-ignore
     return this.findOne(saved.id);
+  }
+
+  async update(id: number, dto: any) {
+    const entree = await this.findOne(id);
+    const ancienNb = entree.nbCaisses;
+    const nouveauNb = dto.nbCaisses;
+    const diff = nouveauNb - ancienNb; // positif = on ajoute, négatif = on libère
+
+    if (diff !== 0) {
+      const chambre = await this.chambresService.findOne(entree.chambre.id);
+      if (diff > 0 && chambre.stockActuel + diff > chambre.capaciteMax) {
+        throw new BadRequestException(
+          `Capacité dépassée. Disponible: ${chambre.disponible} caisses, différence: +${diff}`
+        );
+      }
+    }
+
+    entree.nbCaisses = nouveauNb;
+    await this.repo.save(entree);
+
+    // Mettre à jour le stock de la chambre avec la différence
+    if (diff !== 0) {
+      await this.chambresService.updateStock(entree.chambre.id, diff);
+    }
+
+    return this.findOne(id);
   }
 
   async remove(id: number) {
