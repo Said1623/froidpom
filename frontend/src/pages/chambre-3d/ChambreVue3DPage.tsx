@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useFetch } from '../../hooks/useFetch';
-import { chambresApi, clientsApi } from '../../services';
+import { chambresApi } from '../../services';
 import { Spinner } from '../../components/ui/UI';
 import { useCampagne } from '../../contexts/CampagneContext';
 
@@ -15,7 +15,6 @@ async function fetchStockParClient() {
   return res.json();
 }
 
-// Palette couleurs clients
 const PALETTE = [
   '#1565c0','#e65100','#00695c','#6a1b9a','#c62828',
   '#f57f17','#1b5e20','#01579b','#37474f','#880e4f',
@@ -23,7 +22,14 @@ const PALETTE = [
   '#558b2f','#6d4c41','#0097a7','#7b1fa2','#d84315',
 ];
 
-// Composant SVG 3D isométrique
+function shadeColor(color: string, percent: number) {
+  const num = parseInt(color.replace('#', ''), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + percent));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + percent));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + percent));
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
 function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
   chambre: any;
   stockParClient: Record<number, { nom: string; bois: number; plastique: number; total: number }>;
@@ -31,26 +37,24 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
 }) {
   const W = 900;
   const H = 700;
+  const OX = 450;
+  const OY = 560;
+  const CW = 130;
+  const CH = 38;
+  const DEPTH = 40;
+  const COLS = 5;
 
-  // Dimensions isométriques
-  const OX = 450; // centre
-  const OY = 560; // base (plus bas pour donner de la hauteur)
-  const CW = 130;  // largeur caisse iso — plus large
-  const CH = 38;   // hauteur caisse — plus haute
-  const DEPTH = 40; // profondeur
-
-  // Convertir coordonnées grille → iso
   function isoX(col: number, row: number) { return OX + (col - row) * CW; }
-  function isoY(col: number, row: number, stack: number) { return OY + (col + row) * (DEPTH / 2) - stack * CH; }
+  function isoY(col: number, row: number) { return OY + (col + row) * (DEPTH / 2); }
 
-  // Trier les clients par stock décroissant
   const clients = Object.entries(stockParClient)
     .filter(([, v]) => v.total > 0)
     .sort(([, a], [, b]) => b.total - a.total);
 
-  // Calculer la grille de placement
-  const COLS = 5;
-  const gridItems: { clientId: number; col: number; row: number; stacks: number; color: string; nom: string }[] = [];
+  const gridItems: {
+    clientId: number; col: number; row: number;
+    stacks: number; color: string; nom: string;
+  }[] = [];
 
   clients.forEach(([cidStr, data], idx) => {
     const cid = parseInt(cidStr);
@@ -63,15 +67,13 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
       clientId: cid, col, row,
       stacks: Math.min(maxStack, 8),
       color: clientCouleurs[cid] || '#37474f',
-      nom: data.nom.split(' ')[0],
+      nom: data.nom,
     });
   });
 
-  // Dessiner les murs
   const wallH = 220;
   const floorY = OY + 60;
 
-  // Mur gauche
   const wallLeft = [
     `${OX - COLS * CW},${floorY}`,
     `${OX - COLS * CW},${floorY - wallH}`,
@@ -79,7 +81,6 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
     `${OX},${floorY - COLS * (DEPTH / 2)}`,
   ].join(' ');
 
-  // Mur droit
   const wallRight = [
     `${OX},${floorY - COLS * (DEPTH / 2)}`,
     `${OX},${floorY - wallH - COLS * (DEPTH / 2)}`,
@@ -87,7 +88,6 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
     `${OX + COLS * CW},${floorY}`,
   ].join(' ');
 
-  // Sol
   const floor = [
     `${OX - COLS * CW},${floorY}`,
     `${OX},${floorY - COLS * (DEPTH / 2)}`,
@@ -95,66 +95,42 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
     `${OX},${floorY + COLS * (DEPTH / 2)}`,
   ].join(' ');
 
-  // Dessiner une caisse iso
-  function drawBox(cx: number, cy: number, color: string, label: string, isTop: boolean) {
+  // drawBox sans label — retourne juste les polygones
+  function drawBox(cx: number, cy: number, color: string): string {
     const darkColor = shadeColor(color, -30);
     const lightColor = shadeColor(color, 20);
-    const top = [
-      `${cx},${cy}`,
-      `${cx + CW},${cy - DEPTH / 2}`,
-      `${cx},${cy - CH}`,
-      `${cx - CW},${cy - DEPTH / 2}`,
-    ].join(' ');
-    const left = [
-      `${cx - CW},${cy - DEPTH / 2}`,
-      `${cx - CW},${cy - DEPTH / 2 - CH}`,
-      `${cx},${cy - CH}`,
-      `${cx},${cy}`,
-    ].join(' ');
-    const right = [
-      `${cx},${cy}`,
-      `${cx},${cy - CH}`,
-      `${cx + CW},${cy - DEPTH / 2 - CH}`,
-      `${cx + CW},${cy - DEPTH / 2}`,
-    ].join(' ');
-
-    const labelW = Math.max(label.length * 7 + 16, 65);
-    const labelH = 16;
-    // Côté du label : gauche si caisse est dans la moitié gauche, droite sinon
-    const useRight = cx > 450;
-    const anchorX = useRight ? cx + CW : cx - CW;
-    const anchorY = cy - DEPTH / 2 - CH;
-    const gap = 14;
-    const labelX = useRight ? anchorX + gap : anchorX - gap - labelW;
-    const labelY = anchorY - labelH / 2;
-
-    return `
-      <polygon points="${left}" fill="${darkColor}" stroke="#0d1b2a" stroke-width="0.5"/>
-      <polygon points="${right}" fill="${lightColor}" stroke="#0d1b2a" stroke-width="0.5"/>
-      <polygon points="${top}" fill="${color}" stroke="#0d1b2a" stroke-width="0.5"/>
-      ${isTop && label ? `
-        <line x1="${anchorX}" y1="${anchorY}" x2="${useRight ? labelX : labelX + labelW}" y2="${anchorY}" stroke="${color}" stroke-width="1.2" opacity="0.75"/>
-        <rect x="${labelX}" y="${labelY}" width="${labelW}" height="${labelH}" rx="4" fill="#0a1825" opacity="0.88"/>
-        <rect x="${useRight ? labelX : labelX + labelW - 3}" y="${labelY}" width="3" height="${labelH}" rx="1" fill="${color}"/>
-        <text x="${labelX + (useRight ? 8 : 6)}" y="${labelY + 11}" font-size="12" font-weight="700" fill="white" font-family="system-ui" style="pointer-events:none">${label}</text>
-      ` : ''}
-    `;
+    const top = `${cx},${cy} ${cx + CW},${cy - DEPTH / 2} ${cx},${cy - CH} ${cx - CW},${cy - DEPTH / 2}`;
+    const left = `${cx - CW},${cy - DEPTH / 2} ${cx - CW},${cy - DEPTH / 2 - CH} ${cx},${cy - CH} ${cx},${cy}`;
+    const right = `${cx},${cy} ${cx},${cy - CH} ${cx + CW},${cy - DEPTH / 2 - CH} ${cx + CW},${cy - DEPTH / 2}`;
+    return (
+      '<polygon points="' + left + '" fill="' + darkColor + '" stroke="#0d1b2a" stroke-width="0.5"/>' +
+      '<polygon points="' + right + '" fill="' + lightColor + '" stroke="#0d1b2a" stroke-width="0.5"/>' +
+      '<polygon points="' + top + '" fill="' + color + '" stroke="#0d1b2a" stroke-width="0.5"/>'
+    );
   }
 
-  function shadeColor(color: string, percent: number) {
-    const num = parseInt(color.replace('#', ''), 16);
-    const r = Math.min(255, Math.max(0, (num >> 16) + percent));
-    const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + percent));
-    const b = Math.min(255, Math.max(0, (num & 0xff) + percent));
-    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  // Position du sommet (centre du toit de la caisse du dessus)
+  function getTopCenter(col: number, row: number, stacks: number) {
+    const bx = isoX(col - Math.floor(COLS / 2), row - 1);
+    const by = isoY(col - Math.floor(COLS / 2), row - 1) + 30;
+    const topCy = by - (stacks - 1) * CH;
+    // Centre du toit de la caisse supérieure
+    const tipY = topCy - CH; // sommet du toit
+    return { x: bx, y: tipY - 8 }; // légèrement au-dessus
   }
 
-  // Trier les items pour le rendu (arrière → avant)
   const sorted = [...gridItems].sort((a, b) => (b.col + b.row) - (a.col + a.row));
 
   const tauxRemplissage = chambre.capaciteMax > 0
     ? Math.round((chambre.stockActuel / chambre.capaciteMax) * 100)
     : 0;
+
+  // Troncature du nom si trop long
+  function shortName(nom: string) {
+    const parts = nom.trim().split(' ');
+    if (parts.length >= 2) return parts[0] + ' ' + parts[1].charAt(0) + '.';
+    return parts[0];
+  }
 
   return (
     <div style={{ width: '100%' }}>
@@ -163,7 +139,7 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
         {/* Fond */}
         <rect width={W} height={H} fill="#0d1b2a" rx="12"/>
 
-        {/* Titre chambre */}
+        {/* Titre */}
         <text x={W / 2} y="32" textAnchor="middle" fontSize="16" fontWeight="700" fill="#7eb8f7" fontFamily="system-ui">
           ❄ {chambre.nom}
         </text>
@@ -171,21 +147,17 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
           {chambre.stockActuel?.toLocaleString('fr-FR')} / {chambre.capaciteMax?.toLocaleString('fr-FR')} caisses · {tauxRemplissage}% remplie
         </text>
 
-        {/* Mur gauche */}
+        {/* Murs */}
         <polygon points={wallLeft} fill="#0f2d4a" stroke="#1e4a6e" strokeWidth="1"/>
-        {/* Mur droit */}
         <polygon points={wallRight} fill="#0a2038" stroke="#1e4a6e" strokeWidth="1"/>
-        {/* Sol */}
         <polygon points={floor} fill="#0d2540" stroke="#1e4a6e" strokeWidth="1"/>
 
-        {/* Grille au sol */}
+        {/* Grille sol */}
         {Array.from({ length: COLS + 1 }).map((_, i) => (
           <g key={i} opacity="0.15">
             <line
-              x1={OX - COLS * CW + i * CW * 2}
-              y1={floorY - i * (DEPTH / 2) + (COLS - i) * (DEPTH / 2)}
-              x2={OX + i * CW * 2 - COLS * CW}
-              y2={floorY + COLS * (DEPTH / 2) - i * DEPTH}
+              x1={OX - COLS * CW + i * CW * 2} y1={floorY - i * (DEPTH / 2) + (COLS - i) * (DEPTH / 2)}
+              x2={OX + i * CW * 2 - COLS * CW} y2={floorY + COLS * (DEPTH / 2) - i * DEPTH}
               stroke="#4a9ad4" strokeWidth="0.5"
             />
           </g>
@@ -199,19 +171,49 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
         <rect x={OX - 50} y={floorY - wallH - COLS * (DEPTH / 2) + 5} width="100" height="20" rx="3" fill="#0d3d6e" stroke="#1e6aaa" strokeWidth="1"/>
         <text x={OX} y={floorY - wallH - COLS * (DEPTH / 2) + 19} textAnchor="middle" fontSize="9" fill="#4a9ad4" fontFamily="system-ui">ÉVAPORATEUR ❄</text>
 
-        {/* Caisses */}
+        {/* Caisses — polygones uniquement */}
         {sorted.map((item) => {
-          const baseX = isoX(item.col - Math.floor(COLS / 2), item.row - 1);
-          const baseY = isoY(item.col - Math.floor(COLS / 2), item.row - 1, 0) + 30;
-          return Array.from({ length: item.stacks }).map((_, s) => {
-            const isTop = s === item.stacks - 1;
-            return (
-              <g key={`${item.clientId}-${s}`} dangerouslySetInnerHTML={{ __html: drawBox(baseX, baseY - s * CH, item.color, isTop ? item.nom : '', isTop) }} />
-            );
-          });
+          const bx = isoX(item.col - Math.floor(COLS / 2), item.row - 1);
+          const by = isoY(item.col - Math.floor(COLS / 2), item.row - 1) + 30;
+          return Array.from({ length: item.stacks }).map((_, s) => (
+            <g key={`${item.clientId}-${s}`} dangerouslySetInnerHTML={{ __html: drawBox(bx, by - s * CH, item.color) }} />
+          ));
         })}
 
-        {/* Espaces vides */}
+        {/* Labels clients — rendus en JSX au-dessus de tout, toujours visibles */}
+        {gridItems.map((item) => {
+          const pos = getTopCenter(item.col, item.row, item.stacks);
+          const label = shortName(item.nom);
+          const lw = Math.max(label.length * 7 + 16, 70);
+          const lh = 18;
+          // Clamp X pour rester dans le viewBox
+          const lx = Math.min(Math.max(pos.x - lw / 2, 8), W - lw - 8);
+          const ly = pos.y - lh;
+          return (
+            <g key={`label-${item.clientId}`}>
+              {/* Ligne verticale du sommet vers le label */}
+              <line
+                x1={pos.x} y1={pos.y}
+                x2={pos.x} y2={ly + lh}
+                stroke={item.color} strokeWidth="1.5" opacity="0.7" strokeDasharray="3,2"
+              />
+              {/* Fond label */}
+              <rect x={lx} y={ly} width={lw} height={lh} rx="5" fill="#07131f" opacity="0.92"/>
+              {/* Barre couleur gauche */}
+              <rect x={lx} y={ly} width="4" height={lh} rx="2" fill={item.color}/>
+              {/* Texte */}
+              <text
+                x={lx + 9} y={ly + 13}
+                fontSize="12" fontWeight="700" fill="white"
+                fontFamily="system-ui" style={{ pointerEvents: 'none' }}
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Chambre vide */}
         {chambre.stockActuel === 0 && (
           <text x={OX} y={floorY - 20} textAnchor="middle" fontSize="15" fill="#2a5f8a" fontFamily="system-ui">Chambre vide</text>
         )}
@@ -247,12 +249,10 @@ export default function ChambreVue3DPage() {
   const [selectedChambre, setSelectedChambre] = useState<number | null>(null);
   const [stockData, setStockData] = useState<any[]>([]);
 
-  // Charger le stock par client au démarrage
   useMemo(() => {
     fetchStockParClient().then(d => setStockData(d || []));
   }, []);
 
-  // Sélectionner la première chambre par défaut
   useMemo(() => {
     if (chambres && chambres.length > 0 && selectedChambre === null) {
       setSelectedChambre(chambres[0].id);
@@ -261,7 +261,6 @@ export default function ChambreVue3DPage() {
 
   const chambreActive = chambres?.find(c => c.id === selectedChambre);
 
-  // Construire le stock par client pour la chambre sélectionnée
   const stockParClient = useMemo<Record<number, { nom: string; bois: number; plastique: number; total: number }>>(() => {
     if (!stockData || !selectedChambre) return {};
     const result: Record<number, { nom: string; bois: number; plastique: number; total: number }> = {};
@@ -279,7 +278,6 @@ export default function ChambreVue3DPage() {
     return result;
   }, [stockData, selectedChambre]);
 
-  // Assigner couleurs aux clients
   const clientCouleurs = useMemo<Record<number, string>>(() => {
     const map: Record<number, string> = {};
     Object.keys(stockParClient).forEach((cid, i) => {
@@ -321,7 +319,6 @@ export default function ChambreVue3DPage() {
             <div style={{ fontSize: 11, color: 'var(--c-text3)', marginTop: 2 }}>
               {c.stockActuel} / {c.capaciteMax} · {c.tauxRemplissage}%
             </div>
-            {/* Mini barre */}
             <div style={{ background: 'var(--c-bg2)', borderRadius: 20, height: 3, marginTop: 6, overflow: 'hidden' }}>
               <div style={{ height: '100%', borderRadius: 20, background: c.tauxRemplissage > 85 ? 'var(--c-danger)' : 'var(--c-primary)', width: `${c.tauxRemplissage}%` }} />
             </div>
@@ -332,21 +329,15 @@ export default function ChambreVue3DPage() {
       {/* Vue 3D */}
       {chambreActive && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 16 }}>
-          {/* Chambre 3D */}
           <div style={{ background: '#0d1b2a', borderRadius: 14, overflow: 'hidden', border: '1px solid #1e4a6e' }}>
-            <Chambre3D
-              chambre={chambreActive}
-              stockParClient={stockParClient}
-              clientCouleurs={clientCouleurs}
-            />
+            <Chambre3D chambre={chambreActive} stockParClient={stockParClient} clientCouleurs={clientCouleurs} />
           </div>
 
-          {/* Légende clients */}
+          {/* Légende */}
           <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 14, padding: '16px 14px' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text2)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '.5px' }}>
               Clients stockés
             </div>
-
             {Object.keys(stockParClient).length === 0 ? (
               <div style={{ fontSize: 12, color: 'var(--c-text3)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
                 Aucun stock dans cette chambre
@@ -371,7 +362,6 @@ export default function ChambreVue3DPage() {
                           {data.bois > 0 && <span style={{ color: '#f57f17' }}>🪵 {data.bois.toLocaleString('fr-FR')}</span>}
                           {data.plastique > 0 && <span style={{ color: '#1976d2' }}>🧴 {data.plastique.toLocaleString('fr-FR')}</span>}
                         </div>
-                        {/* Mini barre */}
                         <div style={{ background: 'var(--c-bg2)', borderRadius: 20, height: 3, overflow: 'hidden', border: '1px solid var(--c-border)' }}>
                           <div style={{ height: '100%', borderRadius: 20, background: color, width: `${Math.min(100, pct * 4)}%` }} />
                         </div>
@@ -383,8 +373,6 @@ export default function ChambreVue3DPage() {
                   })}
               </div>
             )}
-
-            {/* Total */}
             {Object.keys(stockParClient).length > 0 && (
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--c-border)', display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, color: 'var(--c-text3)' }}>Total</span>
@@ -397,7 +385,6 @@ export default function ChambreVue3DPage() {
         </div>
       )}
 
-      {/* Note marketing */}
       <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(79,142,247,.06)', border: '1px solid rgba(79,142,247,.2)', borderRadius: 10, fontSize: 12, color: 'var(--c-text2)' }}>
         💡 <strong>Vue marketing</strong> — Cette visualisation 3D permet de montrer en temps réel l'occupation de chaque chambre froide par client. Idéal pour les présentations et le suivi visuel du stock.
       </div>
