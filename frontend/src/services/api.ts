@@ -1,4 +1,4 @@
- const BASE = 'https://froidpom.onrender.com/api';
+ const BASE = import.meta.env.VITE_API_URL || 'https://froidpom.onrender.com/api';
 
 function getToken() {
   return localStorage.getItem('froidpom_token');
