@@ -25,6 +25,76 @@ interface ClientRow {
   selected: boolean; done: boolean; error: string;
 }
 
+// Modal correction d'une entrée existante
+function ModalCorrectionEntree({ entree, onClose, onSaved }: { entree: Entree; onClose: () => void; onSaved: () => void; }) {
+  const [nbCaisses, setNbCaisses] = useState(String(entree.nbCaisses));
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    const nb = parseInt(nbCaisses);
+    if (isNaN(nb) || nb < 1) return toast.error('Quantité invalide');
+    setSaving(true);
+    try {
+      await entreesApi.update(entree.id, { nbCaisses: nb });
+      toast.success('Entrée corrigée');
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erreur');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 16, padding: 28, minWidth: 360, maxWidth: 440 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 16 }}>✏️ Corriger entrée</div>
+            <div style={{ fontSize: 12, color: 'var(--c-text3)', marginTop: 2 }}>{entree.client?.nom} — {typeLabel((entree as any).typeCaisse)}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--c-text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ background: 'var(--c-bg2)', borderRadius: 10, padding: '12px 16px', marginBottom: 18, fontSize: 12, color: 'var(--c-text2)' }}>
+          <div>📅 {format(new Date(entree.dateEntree), 'dd/MM/yyyy')}</div>
+          <div style={{ marginTop: 4 }}>❄ {entree.chambre?.nom}</div>
+          <div style={{ marginTop: 4 }}>Quantité actuelle : <strong style={{ color: 'var(--c-warning)' }}>{entree.nbCaisses}</strong></div>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.5px', display: 'block', marginBottom: 8 }}>
+            Nouvelle quantité
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={nbCaisses}
+            onFocus={e => e.target.select()}
+            onChange={e => {
+              const v = e.target.value.replace(/[^0-9]/g, '');
+              setNbCaisses(v);
+            }}
+            style={{ width: '100%', background: 'var(--c-bg2)', border: '2px solid var(--c-primary)', borderRadius: 8, color: 'var(--c-text)', padding: '10px 14px', fontSize: 18, fontWeight: 700, outline: 'none', textAlign: 'center', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, background: 'var(--c-surface2)', border: '1px solid var(--c-border)', color: 'var(--c-text2)', borderRadius: 10, padding: '10px', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+            Annuler
+          </button>
+          <button onClick={handleSave} disabled={saving || !nbCaisses || parseInt(nbCaisses) < 1}
+            style={{ flex: 2, background: 'var(--c-primary)', border: 'none', color: '#fff', borderRadius: 10, padding: '10px', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: saving ? .6 : 1 }}>
+            {saving ? '...' : '✓ Enregistrer correction'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EntreesPage() {
   const { campagneActive, isInCampagne } = useCampagne();
   const { data: entrees, loading, refetch: refetchEntrees } = useFetch<Entree[]>(() => entreesApi.getAll());
@@ -40,6 +110,7 @@ export default function EntreesPage() {
   const [filterType, setFilterType] = useState('');
   const [affectationEnCours, setAffectationEnCours] = useState(false);
   const [progression, setProgression] = useState<{done:number;total:number}|null>(null);
+  const [entreeACorreger, setEntreeACorreger] = useState<Entree|null>(null);
 
   const rows = useMemo<ClientRow[]>(() => {
     if (!clients || !reservations || !entrees) return [];
@@ -68,6 +139,7 @@ export default function EntreesPage() {
   const totalSelectionne = selectionnes.reduce((s,r)=>s+(parseInt(r.bois)||0)+(parseInt(r.plastique)||0)+(parseInt(r.tranger)||0),0);
   const chambreSelectionnee = (chambres||[]).find(c=>String(c.id)===chambreGroupe);
   const depasse = chambreSelectionnee?totalSelectionne>chambreSelectionnee.disponible:false;
+
   function refetchAll() { refetchEntrees(); refetchChambres(); setInitialized(false); }
 
   async function affecterGroupe() {
@@ -122,22 +194,57 @@ export default function EntreesPage() {
   const allSelected=rowsFiltres.filter(r=>!r.done).every(r=>r.selected);
   const someSelected=selectionnes.length>0;
 
+  // Champ numérique sans max HTML — validation uniquement au submit
   const inp=(row:ClientRow,type:'bois'|'plastique'|'tranger')=>{
-    const val=row[type]; const deja=type==='bois'?row.dejaB:type==='plastique'?row.dejaP:row.dejaT;
+    const val=row[type];
+    const deja=type==='bois'?row.dejaB:type==='plastique'?row.dejaP:row.dejaT;
     const resa=type==='bois'?row.resaB:type==='plastique'?row.resaP:row.resaT;
     const color=type==='bois'?'rgba(245,166,35':type==='plastique'?'rgba(79,142,247':'rgba(0,212,180';
     const icon=type==='bois'?'🪵':type==='plastique'?'🧴':'📦';
     if(resa===0) return null;
-    return <div style={{display:'flex',alignItems:'center',gap:4}}>
-      <span style={{fontSize:11,color:typeColor(type)}}>{icon}</span>
-      <input type="number" min="0" max={resa-deja} value={val} disabled={deja>=resa} onFocus={e=>e.target.select()}
-        onChange={e=>updateRow(row.client.id,type,e.target.value)}
-        style={{background:deja>=resa?'rgba(46,207,138,.08)':'#161d35',border:`1px solid ${deja>=resa?'rgba(46,207,138,.3)':parseInt(val)>0?`${color},.6)`:`${color},.2)`}`,borderRadius:6,color:deja>=resa?'var(--c-success)':'#e8edf8',padding:'5px 0',fontSize:13,fontWeight:700,width:65,outline:'none',textAlign:'center'}}/>
-    </div>;
+    return (
+      <div style={{display:'flex',alignItems:'center',gap:4}} key={type}>
+        <span style={{fontSize:11,color:typeColor(type)}}>{icon}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={val}
+          disabled={deja>=resa}
+          onFocus={e=>e.target.select()}
+          onChange={e => {
+            // Accepter uniquement les chiffres, pas de limite max ici
+            const v = e.target.value.replace(/[^0-9]/g, '');
+            updateRow(row.client.id, type, v);
+          }}
+          style={{
+            background: deja>=resa ? 'rgba(46,207,138,.08)' : '#161d35',
+            border: `1px solid ${deja>=resa ? 'rgba(46,207,138,.3)' : parseInt(val)>0 ? `${color},.6)` : `${color},.2)`}`,
+            borderRadius: 6,
+            color: deja>=resa ? 'var(--c-success)' : '#e8edf8',
+            padding: '5px 0',
+            fontSize: 13,
+            fontWeight: 700,
+            width: 65,
+            outline: 'none',
+            textAlign: 'center',
+          }}
+        />
+      </div>
+    );
   };
 
   return (
     <div className="fade-in">
+      {/* Modal correction */}
+      {entreeACorreger && (
+        <ModalCorrectionEntree
+          entree={entreeACorreger}
+          onClose={() => setEntreeACorreger(null)}
+          onSaved={refetchAll}
+        />
+      )}
+
       <div style={{background:'var(--c-surface)',border:'1px solid var(--c-border)',borderRadius:14,padding:'18px 22px',marginBottom:20}}>
         <h1 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:800,margin:'0 0 4px'}}>Entrées</h1>
         <div style={{fontSize:11,color:'var(--c-text3)'}}>Campagne {campagneActive} — {filteredEntrees.length} entrée(s)</div>
@@ -290,10 +397,10 @@ export default function EntreesPage() {
         <div style={{overflowX:'auto',border:'1px solid var(--c-border)',borderRadius:10}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead><tr style={{background:'var(--c-bg2)'}}>
-              {['Date','Client','Chambre','Type','Nb caisses','Référence',''].map(h=><th key={h} style={{padding:'11px 14px',textAlign:'left',fontSize:10,fontWeight:700,color:'var(--c-text2)',textTransform:'uppercase',letterSpacing:'.5px',borderBottom:'1px solid var(--c-border)'}}>{h}</th>)}
+              {['Date','Client','Chambre','Type','Nb caisses','Référence','',''].map(h=><th key={h} style={{padding:'11px 14px',textAlign:'left',fontSize:10,fontWeight:700,color:'var(--c-text2)',textTransform:'uppercase',letterSpacing:'.5px',borderBottom:'1px solid var(--c-border)'}}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {filteredEntrees.length===0&&<tr><td colSpan={7} style={{padding:40,textAlign:'center',color:'var(--c-text3)'}}>Aucune entrée pour la campagne {campagneActive}</td></tr>}
+              {filteredEntrees.length===0&&<tr><td colSpan={8} style={{padding:40,textAlign:'center',color:'var(--c-text3)'}}>Aucune entrée pour la campagne {campagneActive}</td></tr>}
               {filteredEntrees.map((e,i)=>(
                 <tr key={e.id} style={{borderBottom:'1px solid var(--c-border)',background:i%2===0?'':'rgba(255,255,255,.01)'}}>
                   <td style={{padding:'10px 14px',fontSize:13}}>{format(new Date(e.dateEntree),'dd/MM/yyyy')}</td>
@@ -302,7 +409,18 @@ export default function EntreesPage() {
                   <td style={{padding:'10px 14px'}}><span style={{color:typeColor((e as any).typeCaisse||'bois'),fontWeight:600}}>{typeLabel((e as any).typeCaisse||'bois')}</span></td>
                   <td style={{padding:'10px 14px'}}><strong style={{color:'var(--c-success)',fontSize:15}}>+{e.nbCaisses}</strong></td>
                   <td style={{padding:'10px 14px',color:'var(--c-text2)',fontSize:12}}>{e.reference||'—'}</td>
-                  <td style={{padding:'10px 14px'}}><button onClick={async()=>{if(!confirm('Annuler ?')) return;try{await entreesApi.delete(e.id);toast.success('Annulée');refetchAll();}catch(err:any){toast.error(err?.response?.data?.message||'Erreur');}}} style={{background:'rgba(240,90,90,.12)',border:'1px solid rgba(240,90,90,.25)',color:'var(--c-danger)',borderRadius:6,width:28,height:28,fontSize:12,cursor:'pointer'}}>✕</button></td>
+                  {/* Bouton corriger */}
+                  <td style={{padding:'10px 8px'}}>
+                    <button
+                      onClick={() => setEntreeACorreger(e)}
+                      title="Corriger le nombre de caisses"
+                      style={{background:'rgba(79,142,247,.12)',border:'1px solid rgba(79,142,247,.25)',color:'var(--c-primary)',borderRadius:6,width:28,height:28,fontSize:13,cursor:'pointer',fontWeight:700}}
+                    >✏️</button>
+                  </td>
+                  {/* Bouton supprimer */}
+                  <td style={{padding:'10px 8px'}}>
+                    <button onClick={async()=>{if(!confirm('Annuler cette entrée ?')) return;try{await entreesApi.delete(e.id);toast.success('Annulée');refetchAll();}catch(err:any){toast.error(err?.response?.data?.message||'Erreur');}}} style={{background:'rgba(240,90,90,.12)',border:'1px solid rgba(240,90,90,.25)',color:'var(--c-danger)',borderRadius:6,width:28,height:28,fontSize:12,cursor:'pointer'}}>✕</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
