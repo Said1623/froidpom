@@ -8,7 +8,7 @@ const BASE = import.meta.env.VITE_API_URL || 'https://froidpom.onrender.com/api'
 function getToken() { return localStorage.getItem('froidpom_token'); }
 
 async function fetchStockParClient() {
-  const res = await fetch(`${BASE}/stock/par-client`, {
+  const res = await fetch(`${BASE}/stock/clients`, {
     headers: { 'Authorization': `Bearer ${getToken()}` }
   });
   if (!res.ok) return [];
