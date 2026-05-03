@@ -32,6 +32,51 @@ const sInp = {
   outline: 'none', boxSizing: 'border-box' as const,
 };
 
+// ── Composants stables HORS du modal (évite recréation à chaque render) ──
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function NbPrix({ labelNb, labelPrix, keyNb, keyPrix, color, form, setForm }: {
+  labelNb: string; labelPrix: string; keyNb: string; keyPrix: string;
+  color: string; form: any; setForm: (f: any) => void;
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <Field label={labelNb}>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={form[keyNb]}
+          onFocus={e => e.target.select()}
+          onChange={e => setForm({ ...form, [keyNb]: e.target.value.replace(/[^0-9]/g, '') })}
+          style={{
+            ...sInp,
+            borderColor: parseInt(form[keyNb]) > 0 ? color : 'rgba(79,142,247,.3)',
+            fontWeight: parseInt(form[keyNb]) > 0 ? 700 : 400,
+          }}
+        />
+      </Field>
+      <Field label={labelPrix}>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={form[keyPrix]}
+          onFocus={e => e.target.select()}
+          onChange={e => setForm({ ...form, [keyPrix]: e.target.value.replace(/[^0-9.]/g, '') })}
+          style={sInp}
+        />
+      </Field>
+    </div>
+  );
+}
+
 // ── Modal Réservation (Créer / Modifier) ───────────────
 function ModalReservation({ reservation, client, clients, campagneActive, onClose, onSaved }: {
   reservation?: Reservation; client?: Client; clients: Client[];
@@ -82,30 +127,6 @@ function ModalReservation({ reservation, client, clients, campagneActive, onClos
     finally { setSaving(false); }
   }
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div>
-      <div style={{ fontSize: 11, color: 'var(--c-text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }}>{label}</div>
-      {children}
-    </div>
-  );
-
-  const NbPrix = ({ labelNb, labelPrix, keyNb, keyPrix, color }: any) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      <Field label={labelNb}>
-        <input type="text" inputMode="numeric" value={(form as any)[keyNb]}
-          onChange={e => setForm({...form, [keyNb]: e.target.value.replace(/[^0-9]/g,'')})}
-          onFocus={e => e.target.select()}
-          style={{ ...sInp, borderColor: parseInt((form as any)[keyNb])>0 ? color : 'rgba(79,142,247,.3)', fontWeight: parseInt((form as any)[keyNb])>0 ? 700 : 400 }} />
-      </Field>
-      <Field label={labelPrix}>
-        <input type="text" inputMode="decimal" value={(form as any)[keyPrix]}
-          onChange={e => setForm({...form, [keyPrix]: e.target.value})}
-          onFocus={e => e.target.select()}
-          style={sInp} />
-      </Field>
-    </div>
-  );
-
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.75)' }} onClick={onClose} />
@@ -144,9 +165,9 @@ function ModalReservation({ reservation, client, clients, campagneActive, onClos
           <div style={{ background:'rgba(79,142,247,.05)', border:'1px solid rgba(79,142,247,.15)', borderRadius:10, padding:'14px 16px' }}>
             <div style={{ fontSize:11, color:'var(--c-text3)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12 }}>Quantités & Prix unitaires</div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              <NbPrix labelNb="🧴 Plastique (nb)" labelPrix="Prix/u (MAD)" keyNb="nbCaissesPластique" keyPrix="prixUnitairePlastique" color="rgba(79,142,247,1)" />
-              <NbPrix labelNb="🪵 Bois (nb)" labelPrix="Prix/u (MAD)" keyNb="nbCaissesBois" keyPrix="prixUnitaireBois" color="rgba(245,166,35,1)" />
-              <NbPrix labelNb="📦 Tranger (nb)" labelPrix="Prix/u (MAD)" keyNb="nbCaissesTranger" keyPrix="prixUnitaireTranger" color="rgba(0,212,180,1)" />
+              <NbPrix labelNb="🧴 Plastique (nb)" labelPrix="Prix/u (MAD)" keyNb="nbCaissesPластique" keyPrix="prixUnitairePlastique" color="rgba(79,142,247,1)" form={form} setForm={setForm} />
+              <NbPrix labelNb="🪵 Bois (nb)" labelPrix="Prix/u (MAD)" keyNb="nbCaissesBois" keyPrix="prixUnitaireBois" color="rgba(245,166,35,1)" form={form} setForm={setForm} />
+              <NbPrix labelNb="📦 Tranger (nb)" labelPrix="Prix/u (MAD)" keyNb="nbCaissesTranger" keyPrix="prixUnitaireTranger" color="rgba(0,212,180,1)" form={form} setForm={setForm} />
             </div>
           </div>
 
@@ -202,7 +223,6 @@ function CarteReservation({ client, reservations, onAdd, onEdit, onDelete, onSta
 
   return (
     <div style={{ background:'var(--c-surface)', border:`1px solid ${hasResa ? sc.color+'55' : 'var(--c-border)'}`, borderRadius:12, overflow:'hidden', transition:'border-color .2s' }}>
-      {/* Header carte */}
       <div style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:12, cursor: hasResa ? 'pointer' : 'default' }}
         onClick={() => hasResa && setExpanded(!expanded)}>
         <div style={{ flex:1 }}>
@@ -232,7 +252,6 @@ function CarteReservation({ client, reservations, onAdd, onEdit, onDelete, onSta
         {hasResa && <span style={{ color:'var(--c-text3)', fontSize:14 }}>{expanded ? '▲' : '▼'}</span>}
       </div>
 
-      {/* Réservations */}
       {hasResa && expanded && (
         <div style={{ borderTop:'1px solid var(--c-border)' }}>
           {reservations.map((r, i) => {
@@ -240,7 +259,6 @@ function CarteReservation({ client, reservations, onAdd, onEdit, onDelete, onSta
             const st = STATUTS.find(s => s.value === r.statut) || STATUTS[0];
             return (
               <div key={r.id} style={{ padding:'12px 16px', borderBottom: i < reservations.length-1 ? '1px solid rgba(255,255,255,.04)' : 'none', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-                {/* Date */}
                 <div style={{ minWidth:90 }}>
                   <div style={{ fontSize:10, color:'var(--c-text3)', marginBottom:2 }}>DATE</div>
                   <div style={{ fontSize:13, fontWeight:600 }}>{fdate(r.dateReservation)}</div>
@@ -248,8 +266,6 @@ function CarteReservation({ client, reservations, onAdd, onEdit, onDelete, onSta
                     <div style={{ fontSize:10, color:'var(--c-text3)' }}>→ {fdate(r.dateSortiePrevisionnelle)}</div>
                   )}
                 </div>
-
-                {/* Caisses */}
                 <div style={{ flex:1, display:'flex', gap:8, flexWrap:'wrap' }}>
                   {(r.nbCaissesBois > 0) && (
                     <div style={{ background:'rgba(245,166,35,.08)', border:'1px solid rgba(245,166,35,.2)', borderRadius:8, padding:'6px 10px', fontSize:12 }}>
@@ -270,14 +286,10 @@ function CarteReservation({ client, reservations, onAdd, onEdit, onDelete, onSta
                     </div>
                   )}
                 </div>
-
-                {/* Total */}
                 <div style={{ textAlign:'right', minWidth:110 }}>
                   <div style={{ fontSize:10, color:'var(--c-text3)', marginBottom:2 }}>TOTAL</div>
                   <div style={{ fontWeight:800, fontSize:16, color:'var(--c-success)' }}>{fmt(total)} MAD</div>
                 </div>
-
-                {/* Statut + Actions */}
                 <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
                   <select value={r.statut} onChange={e => onStatut(r.id, e.target.value)}
                     style={{ background:st.bg, border:`1px solid ${st.color}55`, borderRadius:8, color:st.color, padding:'4px 8px', fontSize:11, fontWeight:700, outline:'none', cursor:'pointer' }}>
@@ -296,7 +308,6 @@ function CarteReservation({ client, reservations, onAdd, onEdit, onDelete, onSta
         </div>
       )}
 
-      {/* Pas de réservation */}
       {!hasResa && (
         <div style={{ padding:'10px 16px 14px', borderTop:'1px solid var(--c-border)' }}>
           <span style={{ fontSize:12, color:'var(--c-text3)', fontStyle:'italic' }}>Aucune réservation pour cette campagne</span>
@@ -348,7 +359,6 @@ export default function ReservationsPage() {
   const totalGlobal = reservationsFiltresCampagne.reduce((s, r) => s + calcTotal(r), 0);
   const nbAvecResa = clientsFiltres.filter(c => (reservationParClient[c.id]||[]).length > 0).length;
 
-  // KPIs par statut
   const kpiStatuts = STATUTS.map(s => ({
     ...s,
     count: reservationsFiltresCampagne.filter(r => r.statut === s.value).length,
@@ -383,7 +393,6 @@ export default function ReservationsPage() {
 
   return (
     <div className="fade-in">
-      {/* ── HEADER ── */}
       <div style={{ background:'var(--c-surface)', border:'1px solid var(--c-border)', borderRadius:14, padding:'18px 22px', marginBottom:20 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:14, marginBottom:16 }}>
           <div>
@@ -404,8 +413,6 @@ export default function ReservationsPage() {
             </button>
           </div>
         </div>
-
-        {/* KPIs statuts */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px,1fr))', gap:10 }}>
           {kpiStatuts.map(k => (
             <div key={k.value} onClick={() => setFilterStatut(filterStatut === k.value ? '' : k.value)}
@@ -421,7 +428,6 @@ export default function ReservationsPage() {
         </div>
       </div>
 
-      {/* Barre masse */}
       {showMasse && (
         <div style={{ background:'var(--c-surface)', border:'1px solid var(--c-border2)', borderRadius:12, padding:'14px 18px', marginBottom:14, display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
           <span style={{ fontSize:12, color:'var(--c-text2)', fontWeight:600 }}>⚡ Changer statut en masse :</span>
@@ -433,9 +439,7 @@ export default function ReservationsPage() {
               </button>
             ))}
           </div>
-          <div style={{ fontSize:12, color:'var(--c-text2)' }}>
-            Sélectionner les réservations dans les cartes puis :
-          </div>
+          <div style={{ fontSize:12, color:'var(--c-text2)' }}>Sélectionner les réservations dans les cartes puis :</div>
           <button onClick={appliquerStatutMasse} disabled={selectedIds.size===0||applyingMass}
             style={{ background:selectedIds.size>0?'var(--c-primary)':'var(--c-surface2)', border:'none', color:selectedIds.size>0?'#fff':'var(--c-text3)', borderRadius:8, padding:'7px 16px', fontSize:13, fontWeight:700, cursor:selectedIds.size>0?'pointer':'not-allowed' }}>
             {applyingMass ? 'En cours...' : `⚡ Appliquer (${selectedIds.size})`}
@@ -443,7 +447,6 @@ export default function ReservationsPage() {
         </div>
       )}
 
-      {/* Filtres */}
       <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
         <input placeholder="🔍 Rechercher client..." value={search} onChange={e => setSearch(e.target.value)}
           style={{ background:'var(--c-bg2)', border:'1px solid var(--c-border2)', borderRadius:10, color:'var(--c-text)', padding:'8px 14px', fontSize:13, outline:'none', width:260 }} />
@@ -453,12 +456,9 @@ export default function ReservationsPage() {
             ✕ Effacer filtre statut
           </button>
         )}
-        <div style={{ fontSize:12, color:'var(--c-text2)', marginLeft:'auto' }}>
-          {clientsFiltres.length} client(s) affiché(s)
-        </div>
+        <div style={{ fontSize:12, color:'var(--c-text2)', marginLeft:'auto' }}>{clientsFiltres.length} client(s) affiché(s)</div>
       </div>
 
-      {/* ── Grille cartes ── */}
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
         {clientsFiltres.length === 0 && (
           <div style={{ padding:60, textAlign:'center', color:'var(--c-text3)', background:'var(--c-surface)', borderRadius:12, border:'1px solid var(--c-border)' }}>
@@ -478,7 +478,6 @@ export default function ReservationsPage() {
         ))}
       </div>
 
-      {/* Modal */}
       {modal !== null && (
         <ModalReservation
           reservation={modal.reservation}
