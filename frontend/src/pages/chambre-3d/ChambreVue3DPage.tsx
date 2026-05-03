@@ -118,23 +118,25 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
       `${cx + CW},${cy - DEPTH / 2}`,
     ].join(' ');
 
-    // Point d'ancrage : coin gauche du toit de la caisse
-    const anchorX = cx - CW;
+    const labelW = Math.max(label.length * 7 + 16, 65);
+    const labelH = 16;
+    // Côté du label : gauche si caisse est dans la moitié gauche, droite sinon
+    const useRight = cx > 450;
+    const anchorX = useRight ? cx + CW : cx - CW;
     const anchorY = cy - DEPTH / 2 - CH;
-    // Label à gauche, décalé de 18px
-    const labelX = anchorX - 18;
-    const labelY = anchorY + 4;
-    const labelW = Math.max(label.length * 7 + 10, 60);
+    const gap = 14;
+    const labelX = useRight ? anchorX + gap : anchorX - gap - labelW;
+    const labelY = anchorY - labelH / 2;
 
     return `
       <polygon points="${left}" fill="${darkColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${right}" fill="${lightColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${top}" fill="${color}" stroke="#0d1b2a" stroke-width="0.5"/>
       ${isTop && label ? `
-        <line x1="${anchorX}" y1="${anchorY}" x2="${labelX}" y2="${labelY}" stroke="${color}" stroke-width="1.2" opacity="0.8"/>
-        <rect x="${labelX - labelW}" y="${labelY - 11}" width="${labelW}" height="16" rx="4" fill="#0d1b2a" opacity="0.82"/>
-        <rect x="${labelX - labelW}" y="${labelY - 11}" width="3" height="16" rx="2" fill="${color}"/>
-        <text x="${labelX - labelW + 8}" y="${labelY + 1}" font-size="12" font-weight="700" fill="white" font-family="system-ui" style="pointer-events:none">${label}</text>
+        <line x1="${anchorX}" y1="${anchorY}" x2="${useRight ? labelX : labelX + labelW}" y2="${anchorY}" stroke="${color}" stroke-width="1.2" opacity="0.75"/>
+        <rect x="${labelX}" y="${labelY}" width="${labelW}" height="${labelH}" rx="4" fill="#0a1825" opacity="0.88"/>
+        <rect x="${useRight ? labelX : labelX + labelW - 3}" y="${labelY}" width="3" height="${labelH}" rx="1" fill="${color}"/>
+        <text x="${labelX + (useRight ? 8 : 6)}" y="${labelY + 11}" font-size="12" font-weight="700" fill="white" font-family="system-ui" style="pointer-events:none">${label}</text>
       ` : ''}
     `;
   }
