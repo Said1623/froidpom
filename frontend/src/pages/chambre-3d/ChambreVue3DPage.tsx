@@ -29,15 +29,15 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
   stockParClient: Record<number, { nom: string; bois: number; plastique: number; total: number }>;
   clientCouleurs: Record<number, string>;
 }) {
-  const W = 680;
-  const H = 520;
+  const W = 900;
+  const H = 700;
 
   // Dimensions isométriques
-  const OX = 340; // centre
-  const OY = 420; // base
-  const CW = 80;  // largeur caisse iso
-  const CH = 22;  // hauteur caisse
-  const DEPTH = 30; // profondeur
+  const OX = 450; // centre
+  const OY = 560; // base (plus bas pour donner de la hauteur)
+  const CW = 130;  // largeur caisse iso — plus large
+  const CH = 38;   // hauteur caisse — plus haute
+  const DEPTH = 40; // profondeur
 
   // Convertir coordonnées grille → iso
   function isoX(col: number, row: number) { return OX + (col - row) * CW; }
@@ -68,7 +68,7 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
   });
 
   // Dessiner les murs
-  const wallH = 160;
+  const wallH = 220;
   const floorY = OY + 60;
 
   // Mur gauche
@@ -122,7 +122,7 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
       <polygon points="${left}" fill="${darkColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${right}" fill="${lightColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${top}" fill="${color}" stroke="#0d1b2a" stroke-width="0.5"/>
-      ${isTop && label ? `<text x="${cx}" y="${cy - CH / 2 - DEPTH / 4}" text-anchor="middle" font-size="11" font-weight="600" fill="white" font-family="system-ui" style="pointer-events:none">${label}</text>` : ''}
+      ${isTop && label ? `<text x="${cx}" y="${cy - CH / 2 - DEPTH / 4}" text-anchor="middle" font-size="13" font-weight="700" fill="white" font-family="system-ui" style="pointer-events:none;text-shadow:0 1px 3px #000">${label}</text>` : ''}
     `;
   }
 
@@ -149,10 +149,10 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
         <rect width={W} height={H} fill="#0d1b2a" rx="12"/>
 
         {/* Titre chambre */}
-        <text x={W / 2} y="28" textAnchor="middle" fontSize="14" fontWeight="700" fill="#7eb8f7" fontFamily="system-ui">
+        <text x={W / 2} y="32" textAnchor="middle" fontSize="16" fontWeight="700" fill="#7eb8f7" fontFamily="system-ui">
           ❄ {chambre.nom}
         </text>
-        <text x={W / 2} y="44" textAnchor="middle" fontSize="10" fill="#4a7fa8" fontFamily="system-ui">
+        <text x={W / 2} y="52" textAnchor="middle" fontSize="11" fill="#4a7fa8" fontFamily="system-ui">
           {chambre.stockActuel?.toLocaleString('fr-FR')} / {chambre.capaciteMax?.toLocaleString('fr-FR')} caisses · {tauxRemplissage}% remplie
         </text>
 
@@ -181,8 +181,8 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
         <line x1={OX} y1={floorY - wallH - COLS * (DEPTH / 2)} x2={OX + COLS * CW} y2={floorY - wallH} stroke="#2a6aa8" strokeWidth="3" strokeLinecap="round" opacity="0.4"/>
 
         {/* Évaporateur */}
-        <rect x={OX - 40} y={floorY - wallH - COLS * (DEPTH / 2) + 5} width="80" height="16" rx="3" fill="#0d3d6e" stroke="#1e6aaa" strokeWidth="1"/>
-        <text x={OX} y={floorY - wallH - COLS * (DEPTH / 2) + 16} textAnchor="middle" fontSize="7" fill="#4a9ad4" fontFamily="system-ui">ÉVAPORATEUR ❄</text>
+        <rect x={OX - 50} y={floorY - wallH - COLS * (DEPTH / 2) + 5} width="100" height="20" rx="3" fill="#0d3d6e" stroke="#1e6aaa" strokeWidth="1"/>
+        <text x={OX} y={floorY - wallH - COLS * (DEPTH / 2) + 19} textAnchor="middle" fontSize="9" fill="#4a9ad4" fontFamily="system-ui">ÉVAPORATEUR ❄</text>
 
         {/* Caisses */}
         {sorted.map((item) => {
@@ -198,7 +198,7 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
 
         {/* Espaces vides */}
         {chambre.stockActuel === 0 && (
-          <text x={OX} y={floorY - 20} textAnchor="middle" fontSize="13" fill="#2a5f8a" fontFamily="system-ui">Chambre vide</text>
+          <text x={OX} y={floorY - 20} textAnchor="middle" fontSize="15" fill="#2a5f8a" fontFamily="system-ui">Chambre vide</text>
         )}
 
         {/* KPIs bas */}
@@ -212,15 +212,15 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
           const x = 14 + i * ((W - 28) / 4) + (W - 28) / 8;
           return (
             <g key={k.label}>
-              <text x={x} y={H - 50} textAnchor="middle" fontSize="8" fill="#4a9ad4" fontFamily="system-ui">{k.label}</text>
-              <text x={x} y={H - 30} textAnchor="middle" fontSize="16" fontWeight="700" fill={k.color} fontFamily="system-ui">{k.val}</text>
+              <text x={x} y={H - 50} textAnchor="middle" fontSize="9" fill="#4a9ad4" fontFamily="system-ui">{k.label}</text>
+              <text x={x} y={H - 28} textAnchor="middle" fontSize="18" fontWeight="700" fill={k.color} fontFamily="system-ui">{k.val}</text>
             </g>
           );
         })}
 
         {/* Barre remplissage */}
-        <rect x="500" y={H - 18} width="160" height="4" rx="2" fill="#1e3a5a"/>
-        <rect x="500" y={H - 18} width={Math.round(160 * tauxRemplissage / 100)} height="4" rx="2" fill="#8b5cf6"/>
+        <rect x="650" y={H - 18} width="220" height="5" rx="2" fill="#1e3a5a"/>
+        <rect x="650" y={H - 18} width={Math.round(220 * tauxRemplissage / 100)} height="5" rx="2" fill="#8b5cf6"/>
       </svg>
     </div>
   );
@@ -231,7 +231,6 @@ export default function ChambreVue3DPage() {
   const { data: chambres, loading: loadingC } = useFetch<any[]>(() => chambresApi.getAll());
   const [selectedChambre, setSelectedChambre] = useState<number | null>(null);
   const [stockData, setStockData] = useState<any[]>([]);
-  const [loadingStock, setLoadingStock] = useState(false);
 
   // Charger le stock par client au démarrage
   useMemo(() => {
