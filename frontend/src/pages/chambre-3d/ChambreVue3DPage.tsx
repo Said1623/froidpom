@@ -35,8 +35,8 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
   // Dimensions isométriques
   const OX = 340; // centre
   const OY = 420; // base
-  const CW = 60;  // largeur caisse iso
-  const CH = 14;  // hauteur caisse
+  const CW = 80;  // largeur caisse iso
+  const CH = 22;  // hauteur caisse
   const DEPTH = 30; // profondeur
 
   // Convertir coordonnées grille → iso
@@ -122,7 +122,7 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
       <polygon points="${left}" fill="${darkColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${right}" fill="${lightColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${top}" fill="${color}" stroke="#0d1b2a" stroke-width="0.5"/>
-      ${isTop && label ? `<text x="${cx}" y="${cy - CH / 2 - DEPTH / 4}" text-anchor="middle" font-size="7" font-weight="600" fill="white" font-family="system-ui" style="pointer-events:none">${label}</text>` : ''}
+      ${isTop && label ? `<text x="${cx}" y="${cy - CH / 2 - DEPTH / 4}" text-anchor="middle" font-size="11" font-weight="600" fill="white" font-family="system-ui" style="pointer-events:none">${label}</text>` : ''}
     `;
   }
 
