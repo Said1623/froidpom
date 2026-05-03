@@ -118,11 +118,24 @@ function Chambre3D({ chambre, stockParClient, clientCouleurs }: {
       `${cx + CW},${cy - DEPTH / 2}`,
     ].join(' ');
 
+    // Point d'ancrage : coin gauche du toit de la caisse
+    const anchorX = cx - CW;
+    const anchorY = cy - DEPTH / 2 - CH;
+    // Label à gauche, décalé de 18px
+    const labelX = anchorX - 18;
+    const labelY = anchorY + 4;
+    const labelW = Math.max(label.length * 7 + 10, 60);
+
     return `
       <polygon points="${left}" fill="${darkColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${right}" fill="${lightColor}" stroke="#0d1b2a" stroke-width="0.5"/>
       <polygon points="${top}" fill="${color}" stroke="#0d1b2a" stroke-width="0.5"/>
-      ${isTop && label ? `<text x="${cx}" y="${cy - CH / 2 - DEPTH / 4}" text-anchor="middle" font-size="13" font-weight="700" fill="white" font-family="system-ui" style="pointer-events:none;text-shadow:0 1px 3px #000">${label}</text>` : ''}
+      ${isTop && label ? `
+        <line x1="${anchorX}" y1="${anchorY}" x2="${labelX}" y2="${labelY}" stroke="${color}" stroke-width="1.2" opacity="0.8"/>
+        <rect x="${labelX - labelW}" y="${labelY - 11}" width="${labelW}" height="16" rx="4" fill="#0d1b2a" opacity="0.82"/>
+        <rect x="${labelX - labelW}" y="${labelY - 11}" width="3" height="16" rx="2" fill="${color}"/>
+        <text x="${labelX - labelW + 8}" y="${labelY + 1}" font-size="12" font-weight="700" fill="white" font-family="system-ui" style="pointer-events:none">${label}</text>
+      ` : ''}
     `;
   }
 
