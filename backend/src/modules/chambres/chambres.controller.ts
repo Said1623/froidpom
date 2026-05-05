@@ -26,4 +26,8 @@ export class ChambresController {
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) { return this.service.remove(id); }
+
+  // ── Recalcul stock depuis entrées/sorties réelles ──
+  @Post('recalcul-stocks')
+  recalculStocks() { return this.service.recalculStocks(); }
 }

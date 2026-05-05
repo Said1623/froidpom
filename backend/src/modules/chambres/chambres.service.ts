@@ -79,4 +79,31 @@ export class ChambresService {
       tauxRemplissageGlobal: totalCapacite > 0 ? Math.round((totalStock / totalCapacite) * 100) : 0,
     };
   }
+
+  // ── Recalcul des stocks depuis les entrées/sorties réelles ──
+  async recalculStocks(): Promise<{ updated: number; chambres: any[] }> {
+    const chambres = await this.repo.find();
+    for (const chambre of chambres) {
+      const [entrees] = await this.repo.manager.query(
+        `SELECT COALESCE(SUM("nbCaisses"), 0)::int as total FROM entrees WHERE chambre_id = $1`,
+        [chambre.id]
+      );
+      const [sorties] = await this.repo.manager.query(
+        `SELECT COALESCE(SUM("nbCaisses"), 0)::int as total FROM sorties WHERE chambre_id = $1`,
+        [chambre.id]
+      );
+      chambre.stockActuel = Math.max(0, entrees.total - sorties.total);
+      await this.repo.save(chambre);
+    }
+    const updated = await this.repo.find({ order: { nom: 'ASC' } });
+    return {
+      updated: chambres.length,
+      chambres: updated.map(c => ({
+        id: c.id,
+        nom: c.nom,
+        stockActuel: c.stockActuel,
+        capaciteMax: c.capaciteMax,
+      })),
+    };
+  }
 }

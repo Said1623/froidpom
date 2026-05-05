@@ -75,6 +75,7 @@ export default function EntreesPage() {
   const [filterClient, setFilterClient] = useState('');
   const [filterType, setFilterType] = useState('');
   const [en_cours, setEnCours] = useState(false);
+  const [affectingIds, setAffectingIds] = useState<Set<number>>(new Set());
   const [rows, setRows] = useState<RowState[]>([]);
   const [initialized, setInitialized] = useState(false);
 
@@ -145,10 +146,12 @@ export default function EntreesPage() {
   function refetchAll() { refetchEntrees(); refetchChambres(); setInitialized(false); }
 
   async function affecterRow(r: RowState) {
+    if (affectingIds.has(r.clientId)) return; // bloquer double-clic
     if (!chambreId) return toast.error('Choisir une chambre');
     if (total(r) === 0) return toast.error('Quantité = 0');
     if (isOver(r)) return toast.error('Dépasse la réservation');
     if (chambre && total(r) > chambre.disponible) return toast.error(`Chambre pleine — disponible : ${chambre.disponible}`);
+    setAffectingIds(prev => new Set(prev).add(r.clientId));
     try {
       const ops = [];
       if (parseInt(r.bois) > 0) ops.push(entreesApi.create({ clientId: r.clientId, chambreId: parseInt(chambreId), dateEntree, nbCaisses: parseInt(r.bois), typeCaisse: 'bois' }));
@@ -161,6 +164,8 @@ export default function EntreesPage() {
       refetchChambres(); refetchEntrees(); setInitialized(false);
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erreur');
+    } finally {
+      setAffectingIds(prev => { const s = new Set(prev); s.delete(r.clientId); return s; });
     }
   }
 
@@ -411,14 +416,14 @@ export default function EntreesPage() {
                           )}
                           <button
                             onClick={() => affecterRow(r)}
-                            disabled={tot === 0 || over || !chambreId}
+                            disabled={tot === 0 || over || !chambreId || affectingIds.has(r.clientId)}
                             style={{
-                              background: tot > 0 && !over && chambreId ? 'var(--c-primary)' : 'var(--c-surface2)',
-                              border: 'none', color: tot > 0 && !over && chambreId ? '#fff' : 'var(--c-text3)',
+                              background: tot > 0 && !over && chambreId && !affectingIds.has(r.clientId) ? 'var(--c-primary)' : 'var(--c-surface2)',
+                              border: 'none', color: tot > 0 && !over && chambreId && !affectingIds.has(r.clientId) ? '#fff' : 'var(--c-text3)',
                               borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700,
-                              cursor: tot > 0 && !over && chambreId ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap',
+                              cursor: tot > 0 && !over && chambreId && !affectingIds.has(r.clientId) ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap',
                             }}>
-                            ↓ Affecter
+                            {affectingIds.has(r.clientId) ? '⏳...' : '↓ Affecter'}
                           </button>
                         </div>
                       )}
