@@ -8,8 +8,8 @@ import { useCampagne } from '../../contexts/CampagneContext';
 
 const TYPES = [
   { value: 'plastique', label: 'Plastique', icon: '🧴', color: '#4f8ef7', bg: 'rgba(79,142,247,.12)', border: 'rgba(79,142,247,.4)' },
-  { value: 'bois',      label: 'Bois',      icon: '🪵', color: '#f5a623', bg: 'rgba(245,166,35,.12)', border: 'rgba(245,166,35,.4)' },
-  { value: 'tranger',   label: 'Étranger',  icon: '📦', color: '#00d4b4', bg: 'rgba(0,212,180,.12)', border: 'rgba(0,212,180,.4)' },
+  { value: 'bois', label: 'Bois', icon: '🪵', color: '#f5a623', bg: 'rgba(245,166,35,.12)', border: 'rgba(245,166,35,.4)' },
+  { value: 'tranger', label: 'Étranger', icon: '📦', color: '#00d4b4', bg: 'rgba(0,212,180,.12)', border: 'rgba(0,212,180,.4)' },
 ];
 
 export default function SortiePage() {
@@ -34,6 +34,8 @@ export default function SortiePage() {
   // Chambres où ce client a du stock pour le type sélectionné
   const chambresAvecStock = useMemo(() => {
     if (!stockClient || !chambres) return [];
+    console.log('parChambre keys:', Object.keys(stockClient.parChambre || {}));
+    console.log('chambres ids:', chambres.map(c => c.id));
     return chambres.map(ch => {
       const data = stockClient.parChambre?.[String(ch.id)] ?? stockClient.parChambre?.[ch.id];
       const stock = type === 'bois' ? (data?.bois || 0) : type === 'plastique' ? (data?.plastique || 0) : (data?.tranger || 0);
