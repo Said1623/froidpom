@@ -34,6 +34,9 @@ export default function SortiePage() {
   // Chambres où ce client a du stock pour le type sélectionné
   const chambresAvecStock = useMemo(() => {
     if (!stockClient || !chambres) return [];
+    console.log('stockClient complet:', stockClient);
+    console.log('parChambre["2"]:', stockClient?.parChambre?.['2']);
+    console.log('type actuel:', type);
     const pc = stockClient.parChambre || {};
     return chambres.map(ch => {
       // Chercher avec string ET number
