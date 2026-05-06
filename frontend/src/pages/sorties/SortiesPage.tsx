@@ -34,11 +34,14 @@ export default function SortiePage() {
   // Chambres où ce client a du stock pour le type sélectionné
   const chambresAvecStock = useMemo(() => {
     if (!stockClient || !chambres) return [];
-    console.log('parChambre keys:', Object.keys(stockClient.parChambre || {}));
-    console.log('chambres ids:', chambres.map(c => c.id));
+    const pc = stockClient.parChambre || {};
     return chambres.map(ch => {
-      const data = stockClient.parChambre?.[String(ch.id)] ?? stockClient.parChambre?.[ch.id];
-      const stock = type === 'bois' ? (data?.bois || 0) : type === 'plastique' ? (data?.plastique || 0) : (data?.tranger || 0);
+      // Chercher avec string ET number
+      const data = pc[String(ch.id)] || pc[ch.id] || null;
+      if (!data) return { ...ch, stockType: 0 };
+      const stock = type === 'bois' ? (data.bois || 0)
+        : type === 'plastique' ? (data.plastique || 0)
+          : (data.tranger || 0);
       return { ...ch, stockType: stock };
     }).filter(ch => ch.stockType > 0);
   }, [stockClient, chambres, type]);
