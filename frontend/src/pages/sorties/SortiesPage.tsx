@@ -19,6 +19,7 @@ export default function SortiePage() {
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const { data: chambres, refetch: refetchChambres } = useFetch<Chambre[]>(() => chambresApi.getAll());
   const { data: sorties, refetch: refetchSorties } = useFetch<any[]>(() => sortiesApi.getAll());
+  const { data: allStocks } = useFetch<any[]>(() => stockApi.getParClient());
 
   const [tab, setTab] = useState<'sortie' | 'historique'>('sortie');
   const [clientId, setClientId] = useState('');
@@ -28,11 +29,18 @@ export default function SortiePage() {
   const [saving, setSaving] = useState(false);
   const [stockDetail, setStockDetail] = useState<any>(null);
   const [loadingStock, setLoadingStock] = useState(false);
-
-  // Filtres historique
   const [hFilterClient, setHFilterClient] = useState('');
   const [hFilterType, setHFilterType] = useState('');
   const [hFilterChambre, setHFilterChambre] = useState('');
+
+  // Clients avec stock > 0
+  const clientsAvecStock = useMemo(() => {
+    if (!clients || !allStocks) return [];
+    return clients.filter(c => {
+      const sc = allStocks.find((s: any) => s.clientId === c.id);
+      return sc && sc.stockActuel > 0;
+    });
+  }, [clients, allStocks]);
 
   useEffect(() => {
     if (!clientId) { setStockDetail(null); return; }
@@ -50,7 +58,7 @@ export default function SortiePage() {
 
   const chambresAvecStock = useMemo(() => {
     if (!stockDetail || !chambres) return [];
-    const pc = stockDetail.stockParChambre || stockDetail.parChambre || {};
+    const pc = stockDetail.parChambre || {};
     return chambres.map(ch => {
       const data = pc[String(ch.id)] || pc[ch.id] || null;
       const stock = !data ? 0 : type === 'bois' ? (data.bois || 0) : type === 'plastique' ? (data.plastique || 0) : (data.tranger || 0);
@@ -58,17 +66,18 @@ export default function SortiePage() {
     }).filter(ch => ch.stockType > 0);
   }, [stockDetail, chambres, type]);
 
-  const resumeParChambre = useMemo(() => {
-    if (!stockDetail || !chambres) return [];
-    const pc = stockDetail.stockParChambre || stockDetail.parChambre || {};
-    return chambres.map(ch => {
-      const data = pc[String(ch.id)] || pc[ch.id] || null;
-      if (!data) return null;
-      const total = (data.bois || 0) + (data.plastique || 0) + (data.tranger || 0) || data.stock || 0;
-      if (total === 0) return null;
-      return { ch, data, total };
-    }).filter(Boolean) as { ch: Chambre; data: any; total: number }[];
-  }, [stockDetail, chambres]);
+  // Stock total par type pour ce client
+  const stockTotal = useMemo(() => {
+    if (!stockDetail) return { bois: 0, plastique: 0, tranger: 0, total: 0 };
+    const pc = stockDetail.parChambre || {};
+    let bois = 0, plastique = 0, tranger = 0;
+    Object.values(pc).forEach((d: any) => {
+      bois += d.bois || 0;
+      plastique += d.plastique || 0;
+      tranger += d.tranger || 0;
+    });
+    return { bois, plastique, tranger, total: bois + plastique + tranger };
+  }, [stockDetail]);
 
   const chambreSelectionnee = chambresAvecStock.find(c => String(c.id) === chambreId);
   const stockDispo = chambreSelectionnee?.stockType || 0;
@@ -107,7 +116,9 @@ export default function SortiePage() {
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(245,166,35,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>⬆️</div>
             <div>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, margin: 0 }}>Sortie de caisses</h1>
-              <div style={{ fontSize: 11, color: 'var(--c-text3)', marginTop: 2 }}>Campagne {campagneActive}</div>
+              <div style={{ fontSize: 11, color: 'var(--c-text3)', marginTop: 2 }}>
+                Campagne {campagneActive} — {clientsAvecStock.length} client(s) avec stock
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 4, background: 'var(--c-bg2)', borderRadius: 10, padding: 4 }}>
@@ -120,28 +131,58 @@ export default function SortiePage() {
       {/* ── TAB SORTIE ── */}
       {tab === 'sortie' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* 1. Client */}
+
+          {/* 1. Client — seulement ceux avec stock > 0 */}
           <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 10 }}>👤 Client</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.6px' }}>👤 Client</div>
+              <div style={{ fontSize: 11, color: 'var(--c-text3)' }}>{clientsAvecStock.length} avec stock en chambre</div>
+            </div>
             <select value={clientId} onChange={e => { setClientId(e.target.value); setChambreId(''); setQuantite(''); }}
               style={{ width: '100%', background: 'var(--c-bg2)', border: '2px solid var(--c-border)', borderRadius: 10, color: 'var(--c-text)', padding: '12px 14px', fontSize: 15, fontWeight: 600, outline: 'none', cursor: 'pointer' }}>
               <option value="">— Sélectionner un client —</option>
-              {(clients || []).map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+              {clientsAvecStock.map(c => {
+                const sc = allStocks?.find((s: any) => s.clientId === c.id);
+                return <option key={c.id} value={c.id}>{c.nom} — stock: {sc?.stockActuel || 0}</option>;
+              })}
             </select>
+
+            {/* Stock total + Restant à sortir */}
             {loadingStock && <div style={{ marginTop: 10, fontSize: 12, color: 'var(--c-text3)' }}>Chargement stock...</div>}
-            {!loadingStock && resumeParChambre.length > 0 && (
-              <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {resumeParChambre.map(({ ch, data }) => (
-                  <div key={ch.id} style={{ background: 'var(--c-bg2)', border: '1px solid var(--c-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
-                    <div style={{ fontWeight: 700, color: 'var(--c-primary)', marginBottom: 3 }}>❄ {ch.nom}</div>
-                    {(data.bois || 0) > 0 && <div style={{ color: '#f5a623' }}>🪵 {data.bois}</div>}
-                    {(data.plastique || 0) > 0 && <div style={{ color: '#4f8ef7' }}>🧴 {data.plastique}</div>}
-                    {(data.tranger || 0) > 0 && <div style={{ color: '#00d4b4' }}>📦 {data.tranger}</div>}
-                  </div>
-                ))}
-              </div>
+            {!loadingStock && stockDetail && stockTotal.total > 0 && (
+              <>
+                {/* Bandeau restant total */}
+                <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(245,166,35,.08)', border: '1px solid rgba(245,166,35,.25)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: 'var(--c-text2)', fontWeight: 600 }}>📦 Restant à sortir</span>
+                  <strong style={{ fontSize: 18, color: '#f5a623' }}>{stockTotal.total} caisses</strong>
+                </div>
+                {/* Détail par type */}
+                <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {stockTotal.plastique > 0 && (
+                    <div style={{ background: 'rgba(79,142,247,.08)', border: '1px solid rgba(79,142,247,.2)', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 90 }}>
+                      <div style={{ fontSize: 10, color: '#4f8ef7', fontWeight: 700, marginBottom: 2 }}>🧴 Plastique</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#4f8ef7' }}>{stockTotal.plastique}</div>
+                      <div style={{ fontSize: 10, color: 'var(--c-text3)' }}>en chambre</div>
+                    </div>
+                  )}
+                  {stockTotal.bois > 0 && (
+                    <div style={{ background: 'rgba(245,166,35,.08)', border: '1px solid rgba(245,166,35,.2)', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 90 }}>
+                      <div style={{ fontSize: 10, color: '#f5a623', fontWeight: 700, marginBottom: 2 }}>🪵 Bois</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#f5a623' }}>{stockTotal.bois}</div>
+                      <div style={{ fontSize: 10, color: 'var(--c-text3)' }}>en chambre</div>
+                    </div>
+                  )}
+                  {stockTotal.tranger > 0 && (
+                    <div style={{ background: 'rgba(0,212,180,.08)', border: '1px solid rgba(0,212,180,.2)', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 90 }}>
+                      <div style={{ fontSize: 10, color: '#00d4b4', fontWeight: 700, marginBottom: 2 }}>📦 Étranger</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#00d4b4' }}>{stockTotal.tranger}</div>
+                      <div style={{ fontSize: 10, color: 'var(--c-text3)' }}>en chambre</div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
-            {!loadingStock && clientId && resumeParChambre.length === 0 && (
+            {!loadingStock && clientId && stockTotal.total === 0 && (
               <div style={{ marginTop: 10, fontSize: 12, color: 'var(--c-text3)', fontStyle: 'italic' }}>Aucun stock en chambre</div>
             )}
           </div>
@@ -150,13 +191,18 @@ export default function SortiePage() {
           <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 14, padding: '18px 20px' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 12 }}>📦 Type de caisse</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              {TYPES.map(t => (
-                <button key={t.value} onClick={() => { setType(t.value); setChambreId(''); setQuantite(''); }}
-                  style={{ flex: 1, padding: '14px 8px', borderRadius: 12, cursor: 'pointer', transition: 'all .15s', background: type === t.value ? t.bg : 'var(--c-bg2)', border: `2px solid ${type === t.value ? t.border : 'var(--c-border)'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 24 }}>{t.icon}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: type === t.value ? t.color : 'var(--c-text2)' }}>{t.label}</span>
-                </button>
-              ))}
+              {TYPES.map(t => {
+                const stockType = t.value === 'bois' ? stockTotal.bois : t.value === 'plastique' ? stockTotal.plastique : stockTotal.tranger;
+                const dispo = !clientId || stockType > 0;
+                return (
+                  <button key={t.value} onClick={() => { setType(t.value); setChambreId(''); setQuantite(''); }}
+                    style={{ flex: 1, padding: '14px 8px', borderRadius: 12, cursor: dispo ? 'pointer' : 'not-allowed', opacity: clientId && !dispo ? 0.4 : 1, transition: 'all .15s', background: type === t.value ? t.bg : 'var(--c-bg2)', border: `2px solid ${type === t.value ? t.border : 'var(--c-border)'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 24 }}>{t.icon}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: type === t.value ? t.color : 'var(--c-text2)' }}>{t.label}</span>
+                    {clientId && <span style={{ fontSize: 10, color: stockType > 0 ? t.color : 'var(--c-text3)', fontWeight: 700 }}>{stockType > 0 ? `${stockType} disponibles` : 'Aucun stock'}</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -176,7 +222,7 @@ export default function SortiePage() {
                         <div style={{ width: 40, height: 40, borderRadius: 10, background: selected ? typeActif.bg : 'var(--c-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>❄</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700, fontSize: 14, color: selected ? typeActif.color : 'var(--c-text)' }}>{c.nom}</div>
-                          <div style={{ fontSize: 13, marginTop: 3, color: typeActif.color, fontWeight: 700 }}>{typeActif.icon} {c.stockType} caisses disponibles</div>
+                          <div style={{ fontSize: 13, marginTop: 3, color: typeActif.color, fontWeight: 700 }}>{typeActif.icon} {c.stockType} caisses à sortir</div>
                         </div>
                         {selected && <span style={{ color: typeActif.color, fontSize: 18 }}>✓</span>}
                       </button>
@@ -190,7 +236,10 @@ export default function SortiePage() {
           {/* 4. Quantité */}
           {chambreId && (
             <div style={{ background: 'var(--c-surface)', border: `2px solid ${depasseStock ? 'var(--c-danger)' : 'var(--c-border)'}`, borderRadius: 14, padding: '18px 20px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 12 }}>🔢 Quantité à sortir</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.6px' }}>🔢 Quantité à sortir</div>
+                <div style={{ fontSize: 12, color: typeActif.color, fontWeight: 700 }}>max: {stockDispo}</div>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <button onClick={() => setQuantite(String(Math.max(0, nb - 1)))} style={{ width: 48, height: 48, borderRadius: 12, border: '2px solid var(--c-border)', background: 'var(--c-bg2)', color: 'var(--c-text)', fontSize: 22, fontWeight: 700, cursor: 'pointer' }}>−</button>
                 <input type="text" inputMode="numeric" value={quantite} onFocus={e => e.target.select()}
@@ -227,7 +276,7 @@ export default function SortiePage() {
             </select>
             <select value={hFilterChambre} onChange={e => setHFilterChambre(e.target.value)}
               style={{ background: 'var(--c-bg2)', border: '1px solid var(--c-border)', borderRadius: 8, color: 'var(--c-text)', padding: '8px 12px', fontSize: 13, outline: 'none', flex: 1 }}>
-              <option value="">Toutes les chambres</option>
+              <option value="">Toutes chambres</option>
               {(chambres || []).map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
             <select value={hFilterType} onChange={e => setHFilterType(e.target.value)}
@@ -240,9 +289,7 @@ export default function SortiePage() {
                 style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text3)', borderRadius: 8, padding: '8px 12px', fontSize: 12, cursor: 'pointer' }}>✕</button>
             )}
           </div>
-
-          {/* KPI */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             {TYPES.map(t => {
               const n = filteredSorties.filter((s: any) => s.typeCaisse === t.value).reduce((sum: number, s: any) => sum + s.nbCaisses, 0);
               if (!n) return null;
@@ -253,7 +300,6 @@ export default function SortiePage() {
             })}
             <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--c-text3)', alignSelf: 'center' }}>{filteredSorties.length} sortie(s)</div>
           </div>
-
           <div style={{ overflowX: 'auto', border: '1px solid var(--c-border)', borderRadius: 12 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr style={{ background: 'var(--c-bg2)' }}>
@@ -272,8 +318,8 @@ export default function SortiePage() {
                     <td style={{ padding: '10px 12px' }}><strong style={{ color: '#f5a623', fontSize: 14 }}>-{s.nbCaisses}</strong></td>
                     <td style={{ padding: '10px 8px' }}>
                       <button onClick={async () => {
-                        if (!confirm(`Annuler cette sortie (-${s.nbCaisses} pour ${s.client.nom}) ?`)) return;
-                        try { await sortiesApi.delete(s.id); toast.success('Annulée'); refetchSorties(); refetchChambres(); }
+                        if (!confirm(`Annuler cette sortie (-${s.nbCaisses} ${s.typeCaisse} pour ${s.client.nom}) ?`)) return;
+                        try { await sortiesApi.delete(s.id); toast.success('Sortie annulée'); refetchSorties(); refetchChambres(); }
                         catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur'); }
                       }} style={{ background: 'rgba(240,90,90,.12)', border: '1px solid rgba(240,90,90,.25)', color: 'var(--c-danger)', borderRadius: 6, width: 28, height: 28, fontSize: 12, cursor: 'pointer' }}>✕</button>
                     </td>
