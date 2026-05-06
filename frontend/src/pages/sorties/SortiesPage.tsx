@@ -7,8 +7,8 @@ import { useCampagne } from '../../contexts/CampagneContext';
 
 const TYPES = [
   { value: 'plastique', label: 'Plastique', icon: '🧴', color: '#4f8ef7', bg: 'rgba(79,142,247,.12)', border: 'rgba(79,142,247,.4)' },
-  { value: 'bois', label: 'Bois', icon: '🪵', color: '#f5a623', bg: 'rgba(245,166,35,.12)', border: 'rgba(245,166,35,.4)' },
-  { value: 'tranger', label: 'Étranger', icon: '📦', color: '#00d4b4', bg: 'rgba(0,212,180,.12)', border: 'rgba(0,212,180,.4)' },
+  { value: 'bois',      label: 'Bois',      icon: '🪵', color: '#f5a623', bg: 'rgba(245,166,35,.12)', border: 'rgba(245,166,35,.4)' },
+  { value: 'tranger',   label: 'Étranger',  icon: '📦', color: '#00d4b4', bg: 'rgba(0,212,180,.12)', border: 'rgba(0,212,180,.4)' },
 ];
 
 export default function SortiePage() {
@@ -28,7 +28,7 @@ export default function SortiePage() {
   useEffect(() => {
     if (!clientId) { setStockDetail(null); return; }
     setLoadingStock(true);
-    stockApi.getMouvementsClient(parseInt(clientId))
+    stockApi.getStockDetailClient(parseInt(clientId))
       .then(r => setStockDetail(r.data))
       .catch(() => setStockDetail(null))
       .finally(() => setLoadingStock(false));
@@ -37,15 +37,14 @@ export default function SortiePage() {
   async function refetchStock() {
     if (!clientId) return;
     try {
-      const r = await stockApi.getMouvementsClient(parseInt(clientId));
+      const r = await stockApi.getStockDetailClient(parseInt(clientId));
       setStockDetail(r.data);
-    } catch { }
+    } catch {}
   }
 
   // Chambres où ce client a du stock pour le type sélectionné
   const chambresAvecStock = useMemo(() => {
     if (!stockDetail || !chambres) return [];
-    console.log('stockDetail complet:', JSON.stringify(stockDetail, null, 2));
     // L'endpoint getMouvementsClient retourne stockParChambre ou parChambre
     const pc = stockDetail.stockParChambre || stockDetail.parChambre || {};
     return chambres.map(ch => {
@@ -53,8 +52,8 @@ export default function SortiePage() {
       const data = pc[key] || pc[ch.id] || null;
       const stock = !data ? 0
         : type === 'bois' ? (data.bois || data.Bois || 0)
-          : type === 'plastique' ? (data.plastique || data.Plastique || 0)
-            : (data.tranger || data.Tranger || data.etranger || 0);
+        : type === 'plastique' ? (data.plastique || data.Plastique || 0)
+        : (data.tranger || data.Tranger || data.etranger || 0);
       return { ...ch, stockType: stock };
     }).filter(ch => ch.stockType > 0);
   }, [stockDetail, chambres, type]);

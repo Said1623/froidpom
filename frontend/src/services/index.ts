@@ -4,19 +4,16 @@ import type {
   Paiement, Location, DashboardData, StockClient, ChambreStats
 } from '../types';
 
-// ── Auth ──────────────────────────────────────────────
 export const authApi = {
   login: (username: string, password: string) =>
     api.post('/auth/login', { username, password }),
   me: () => api.get('/auth/me'),
 };
 
-// ── Dashboard ─────────────────────────────────────────
 export const dashboardApi = {
   getResume: (campagne?: string) => api.get(`/dashboard/resume${campagne ? `?campagne=${encodeURIComponent(campagne)}` : ''}`),
 };
 
-// ── Chambres ──────────────────────────────────────────
 export const chambresApi = {
   getAll: () => api.get('/chambres'),
   getStats: () => api.get('/chambres/stats'),
@@ -24,9 +21,9 @@ export const chambresApi = {
   create: (data: any) => api.post('/chambres', data),
   update: (id: number, data: any) => api.put(`/chambres/${id}`, data),
   delete: (id: number) => api.delete(`/chambres/${id}`),
+  recalculStocks: () => api.post('/chambres/recalcul-stocks'),
 };
 
-// ── Clients ───────────────────────────────────────────
 export const clientsApi = {
   getAll: (campagne?: string) => api.get(`/clients${campagne ? `?campagne=${encodeURIComponent(campagne)}` : ''}`),
   getOne: (id: number) => api.get(`/clients/${id}`),
@@ -36,7 +33,6 @@ export const clientsApi = {
   copierCampagne: (source: string, cible: string) => api.post('/clients/copier-campagne', { source, cible }),
 };
 
-// ── Réservations ──────────────────────────────────────
 export const reservationsApi = {
   getAll: () => api.get('/reservations'),
   getOne: (id: number) => api.get(`/reservations/${id}`),
@@ -45,7 +41,6 @@ export const reservationsApi = {
   delete: (id: number) => api.delete(`/reservations/${id}`),
 };
 
-// ── Entrées ───────────────────────────────────────────
 export const entreesApi = {
   getAll: () => api.get('/entrees'),
   getOne: (id: number) => api.get(`/entrees/${id}`),
@@ -54,7 +49,6 @@ export const entreesApi = {
   delete: (id: number) => api.delete(`/entrees/${id}`),
 };
 
-// ── Sorties ───────────────────────────────────────────
 export const sortiesApi = {
   getAll: () => api.get('/sorties'),
   getOne: (id: number) => api.get(`/sorties/${id}`),
@@ -62,7 +56,6 @@ export const sortiesApi = {
   delete: (id: number) => api.delete(`/sorties/${id}`),
 };
 
-// ── Paiements ─────────────────────────────────────────
 export const paiementsApi = {
   getAll: () => api.get('/paiements'),
   getOne: (id: number) => api.get(`/paiements/${id}`),
@@ -72,7 +65,6 @@ export const paiementsApi = {
   delete: (id: number) => api.delete(`/paiements/${id}`),
 };
 
-// ── Locations ─────────────────────────────────────────
 export const locationsApi = {
   getAll: () => api.get('/locations'),
   getAllRetours: () => api.get('/locations/retours').then(r => r.data),
@@ -84,9 +76,9 @@ export const locationsApi = {
   delete: (id: number) => api.delete(`/locations/${id}`),
 };
 
-// ── Stock ─────────────────────────────────────────────
 export const stockApi = {
   getParChambre: () => api.get('/stock/chambres'),
   getParClient: () => api.get('/stock/clients'),
   getMouvementsClient: (id: number) => api.get(`/stock/clients/${id}`),
+  getStockDetailClient: (id: number) => api.get(`/stock/clients/${id}/detail`),
 };

@@ -13,6 +13,11 @@ export class StockController {
   @Get('clients')
   getStockParClient() { return this.service.getStockParClient(); }
 
+  @Get('clients/:clientId/detail')
+  getStockDetailClient(@Param('clientId', ParseIntPipe) clientId: number) {
+    return this.service.getStockDetailClient(clientId);
+  }
+
   @Get('clients/:clientId')
   getMouvementsClient(@Param('clientId', ParseIntPipe) clientId: number) {
     return this.service.getMouvementsClient(clientId);
