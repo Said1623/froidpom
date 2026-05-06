@@ -1,5 +1,5 @@
 import { useFetch } from '../../hooks/useFetch';
-import { dashboardApi } from '../../services';
+import { dashboardApi, chambresApi } from '../../services';
 import { StatCard, Card, ProgressBar, Spinner } from '../../components/ui/UI';
 import type { DashboardData } from '../../types';
 import {
@@ -9,14 +9,30 @@ import {
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCampagne } from '../../contexts/CampagneContext';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
   const { campagneActive } = useCampagne();
   const token = localStorage.getItem('froidpom_token');
-  const { data, loading } = useFetch<DashboardData>(
+  const { data, loading, refetch } = useFetch<DashboardData>(
     () => token ? dashboardApi.getResume(campagneActive) : Promise.resolve({ data: null }),
     [token, campagneActive]
   );
+  const [recalculating, setRecalculating] = useState(false);
+
+  async function handleRecalcul() {
+    setRecalculating(true);
+    try {
+      const result = await chambresApi.recalculStocks();
+      toast.success(`✓ Stocks recalculés — ${result.data.updated} chambre(s) mises à jour`);
+      refetch();
+    } catch (e: any) {
+      toast.error('Erreur lors du recalcul');
+    } finally {
+      setRecalculating(false);
+    }
+  }
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><Spinner size={36} /></div>;
   if (!data) return null;
@@ -44,9 +60,24 @@ export default function DashboardPage() {
     <div className="fade-in">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Tableau de bord</h1>
-        <span style={{ fontSize: 13, color: 'var(--c-text3)' }}>
-          {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={handleRecalcul}
+            disabled={recalculating}
+            title="Recalculer les stocks depuis les entrées/sorties réelles"
+            style={{
+              background: recalculating ? 'var(--c-surface2)' : 'rgba(240,90,90,.12)',
+              border: '1px solid rgba(240,90,90,.3)',
+              color: recalculating ? 'var(--c-text3)' : 'var(--c-danger)',
+              borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700,
+              cursor: recalculating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+            {recalculating ? '⏳ Calcul...' : '🔧 Recalcul stocks'}
+          </button>
+          <span style={{ fontSize: 13, color: 'var(--c-text3)' }}>
+            {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
+          </span>
+        </div>
       </div>
 
       {/* KPIs */}

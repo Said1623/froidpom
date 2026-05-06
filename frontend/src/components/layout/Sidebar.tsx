@@ -9,12 +9,12 @@ const NAV = [
   { to: '/chambre-3d', icon: '🏗', label: 'Vue 3D Chambres' },
   { to: '/clients', icon: '👤', label: 'Clients' },
   { to: '/reservations', icon: '📋', label: 'Réservations' },
-  { to: '/entrees', icon: '↓', label: 'Entrées' },
-  { to: '/sorties', icon: '↑', label: 'Sorties' },
-  { to: '/paiements', icon: 'Dh', label: 'Paiements' },
-  { to: '/historique-paiements', icon: '📜', label: 'Historique Paiements' },
+  { to: '/entrees', icon: '⬇', label: 'Entrées' },
+  { to: '/sorties', icon: '⬆', label: 'Sorties' },
+  { to: '/paiements', icon: '💰', label: 'Paiements' },
+  { to: '/historique-paiements', icon: '🧾', label: 'Historique Paiements' },
   { to: '/locations', icon: '📦', label: 'Locations' },
-  { to: '/stock', icon: '≡', label: 'Suivi Stock' },
+  { to: '/stock', icon: '📊', label: 'Suivi Stock' },
   { to: '/ventes', icon: '🚚', label: 'Suivi Ventes' },
 ];
 
