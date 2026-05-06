@@ -34,7 +34,6 @@ export class LocationsService {
     return this.repo.find({ where, order: { dateLocation: 'DESC' }, relations: ['client'] });
   }
 
-  // Récupérer tous les retours (historique)
   findAllRetours(clientId?: number) {
     const where: any = clientId ? { client: { id: clientId } } : {};
     return this.retourRepo.find({
@@ -72,12 +71,10 @@ export class LocationsService {
       );
     }
 
-    // 1. Mettre à jour le compteur sur la location
     location.nbCaissesRetournees += dto.nbRetournees;
     if (dto.notes) location.notes = dto.notes;
     await this.repo.save(location);
 
-    // 2. Enregistrer le retour dans l'historique
     const dateRetour = dto.dateRetour || new Date().toISOString().split('T')[0];
     const retour = this.retourRepo.create({
       location: { id } as any,
@@ -99,6 +96,13 @@ export class LocationsService {
 
   async getSuiviClient(clientId: number) {
     const locations = await this.findAll(clientId);
+    const totalLoue = locations.reduce((s, l) => s + l.nbCaisses, 0);
+    const totalRetourne = locations.reduce((s, l) => s + l.nbCaissesRetournees, 0);
+    return { locations, totalLoue, totalRetourne, totalRestant: totalLoue - totalRetourne };
+  }
+
+  async getSuiviGlobal() {
+    const locations = await this.repo.find({ relations: ['client'], order: { dateLocation: 'DESC' } });
     const totalLoue = locations.reduce((s, l) => s + l.nbCaisses, 0);
     const totalRetourne = locations.reduce((s, l) => s + l.nbCaissesRetournees, 0);
     return { locations, totalLoue, totalRetourne, totalRestant: totalLoue - totalRetourne };

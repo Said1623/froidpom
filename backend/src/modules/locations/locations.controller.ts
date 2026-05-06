@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Body, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Delete, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { LocationsService, CreateLocationDto, RetourLocationDto } from './locations.service';
 
+@UseGuards(AuthGuard('jwt'))
 @Controller('locations')
 export class LocationsController {
   constructor(private readonly service: LocationsService) {}
@@ -15,13 +17,29 @@ export class LocationsController {
     return this.service.findAllRetours(clientId ? parseInt(clientId) : undefined);
   }
 
+  @Get('suivi')
+  getSuiviGlobal() {
+    return this.service.getSuiviGlobal();
+  }
+
+  @Get('suivi/:clientId')
+  getSuiviClient(@Param('clientId', ParseIntPipe) clientId: number) {
+    return this.service.getSuiviClient(clientId);
+  }
+
   @Post()
   create(@Body() dto: CreateLocationDto) {
     return this.service.create(dto);
   }
 
   @Post(':id/retour')
-  enregistrerRetour(@Param('id', ParseIntPipe) id: number, @Body() dto: RetourLocationDto) {
+  enregistrerRetourPost(@Param('id', ParseIntPipe) id: number, @Body() dto: RetourLocationDto) {
+    return this.service.enregistrerRetour(id, dto);
+  }
+
+  // Frontend utilise PUT — on supporte les deux méthodes
+  @Put(':id/retour')
+  enregistrerRetourPut(@Param('id', ParseIntPipe) id: number, @Body() dto: RetourLocationDto) {
     return this.service.enregistrerRetour(id, dto);
   }
 
