@@ -297,9 +297,9 @@ function CarteReservation({ client, reservations, onAdd, onEdit, onDelete, onSta
                   </select>
                   <div style={{ display:'flex', gap:5 }}>
                     <button onClick={() => onEdit(r)}
-                      style={{ background:'rgba(79,142,247,.12)', border:'1px solid rgba(79,142,247,.25)', color:'var(--c-primary)', borderRadius:6, width:28, height:28, fontSize:13, cursor:'pointer' }}>✏</button>
+                      style={{ background:'rgba(79,142,247,.12)', border:'1px solid rgba(79,142,247,.25)', color:'var(--c-primary)', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>✏️ Modifier</button>
                     <button onClick={() => onDelete(r.id, client.nom)}
-                      style={{ background:'rgba(240,90,90,.12)', border:'1px solid rgba(240,90,90,.25)', color:'var(--c-danger)', borderRadius:6, width:28, height:28, fontSize:12, cursor:'pointer' }}>✕</button>
+                      style={{ background:'rgba(240,90,90,.12)', border:'1px solid rgba(240,90,90,.25)', color:'var(--c-danger)', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>🗑️ Suppr</button>
                   </div>
                 </div>
               </div>

@@ -67,7 +67,7 @@ function ModalVente({ vente, clients, onClose, onSaved }: { vente?: any; clients
       <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.75)'}} onClick={onClose}/>
       <div style={{position:'relative',zIndex:1,background:'#0f1628',border:'1px solid rgba(100,140,255,.3)',borderRadius:16,width:'100%',maxWidth:560,padding:'24px 28px',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 64px rgba(0,0,0,.6)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:22}}>
-          <div style={{fontSize:16,fontWeight:700}}>{vente?.id?'✏ Modifier la vente':'+ Nouvelle vente'}</div>
+          <div style={{fontSize:16,fontWeight:700}}>{vente?.id?'✏️ Modifier la vente':'+ Nouvelle vente'}</div>
           <button onClick={onClose} style={{background:'#1f2a4a',border:'none',color:'#8fa3cc',width:30,height:30,borderRadius:6,cursor:'pointer',fontSize:16}}>✕</button>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
@@ -77,16 +77,32 @@ function ModalVente({ vente, clients, onClose, onSaved }: { vente?: any; clients
             </select>
           </div>
           <div><Label>Date *</Label><input type="date" value={form.dateVente} onChange={e=>setForm({...form,dateVente:e.target.value})} style={sInp}/></div>
-          <div><Label>Quantité (Tonnes) *</Label><input type="number" min="0" step="0.01" value={form.quantiteTonnes} onChange={e=>setForm({...form,quantiteTonnes:e.target.value})} placeholder="0.00" style={sInp}/></div>
+          <div><Label>Quantité (Tonnes) *</Label>
+            <input type="text" inputMode="decimal" value={form.quantiteTonnes}
+              onFocus={e=>e.target.select()}
+              onChange={e=>setForm({...form,quantiteTonnes:e.target.value.replace(/[^0-9.]/g,'')})}
+              placeholder="0.00" style={sInp}/>
+          </div>
           <div style={{gridColumn:'1/-1'}}><Label>Ville destinataire *</Label>
             <select value={form.villeDestinataire} onChange={e=>setForm({...form,villeDestinataire:e.target.value})} style={sInp}>
               <option value="">-- Sélectionner --</option>{VILLES_MAROC.map(v=><option key={v} value={v}>{v}</option>)}
             </select>
           </div>
-          <div><Label>Type marchandise</Label><input type="text" value={form.typeMarchandise} onChange={e=>setForm({...form,typeMarchandise:e.target.value})} placeholder="Pommes, Légumes..." style={sInp}/></div>
-          <div><Label>Origine (ferme)</Label><input type="text" value={form.origineFerme} onChange={e=>setForm({...form,origineFerme:e.target.value})} placeholder="Nom de la ferme..." style={sInp}/></div>
-          <div><Label>Prix unitaire (MAD/T)</Label><input type="number" min="0" step="0.01" value={form.prixUnitaire} onChange={e=>setForm({...form,prixUnitaire:e.target.value})} style={sInp}/></div>
-          <div><Label>Transporteur</Label><input type="text" value={form.transporteur} onChange={e=>setForm({...form,transporteur:e.target.value})} placeholder="Nom du transporteur" style={sInp}/></div>
+          <div><Label>Type marchandise</Label>
+            <input type="text" value={form.typeMarchandise} onChange={e=>setForm({...form,typeMarchandise:e.target.value})} placeholder="Pommes, Légumes..." style={sInp}/>
+          </div>
+          <div><Label>Origine (ferme)</Label>
+            <input type="text" value={form.origineFerme} onChange={e=>setForm({...form,origineFerme:e.target.value})} placeholder="Nom de la ferme..." style={sInp}/>
+          </div>
+          <div><Label>Prix unitaire (MAD/T)</Label>
+            <input type="text" inputMode="decimal" value={form.prixUnitaire}
+              onFocus={e=>e.target.select()}
+              onChange={e=>setForm({...form,prixUnitaire:e.target.value.replace(/[^0-9.]/g,'')})}
+              style={sInp}/>
+          </div>
+          <div><Label>Transporteur</Label>
+            <input type="text" value={form.transporteur} onChange={e=>setForm({...form,transporteur:e.target.value})} placeholder="Nom du transporteur" style={sInp}/>
+          </div>
           {montant>0&&<div style={{gridColumn:'1/-1',background:'rgba(46,207,138,.08)',border:'1px solid rgba(46,207,138,.2)',borderRadius:8,padding:'10px 14px',display:'flex',justifyContent:'space-between'}}>
             <span style={{fontSize:13,color:'var(--c-text2)'}}>Montant total :</span>
             <strong style={{color:'var(--c-success)',fontSize:15}}>{montant.toLocaleString('fr-FR')} MAD</strong>
@@ -176,7 +192,12 @@ function TabGroupe({ clients, onSaved }: { clients: Client[]; onSaved: () => voi
         <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>2. Saisir les informations</div>
         <div style={{background:'var(--c-surface)',border:'1px solid var(--c-border2)',borderRadius:14,padding:'20px 18px',display:'flex',flexDirection:'column',gap:14}}>
           <div><Label>Date</Label><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={sInp}/></div>
-          <div><Label>Quantité (Tonnes) *</Label><input type="number" min="0" step="0.01" value={quantite} onChange={e=>setQuantite(e.target.value)} placeholder="0.00" style={{...sInp,borderColor:quantite?'rgba(245,166,35,.6)':'rgba(79,142,247,.3)',fontWeight:quantite?700:400,fontSize:15}}/></div>
+          <div><Label>Quantité (Tonnes) *</Label>
+            <input type="text" inputMode="decimal" value={quantite}
+              onFocus={e=>e.target.select()}
+              onChange={e=>setQuantite(e.target.value.replace(/[^0-9.]/g,''))}
+              placeholder="0.00" style={{...sInp,borderColor:quantite?'rgba(245,166,35,.6)':'rgba(79,142,247,.3)',fontWeight:quantite?700:400,fontSize:15}}/>
+          </div>
           <div><Label>Ville destinataire *</Label>
             <select value={ville} onChange={e=>setVille(e.target.value)} style={{...sInp,color:ville?'#e8edf8':'#8fa3cc'}}>
               <option value="">-- Sélectionner --</option>{VILLES_MAROC.map(v=><option key={v} value={v}>{v}</option>)}
@@ -254,7 +275,7 @@ export default function VentesPage() {
 
   return (
     <div className="fade-in">
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <div style={{background:'var(--c-surface)',border:'1px solid var(--c-border)',borderRadius:14,padding:'18px 22px',marginBottom:20}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:14,marginBottom:16}}>
           <div>
@@ -266,7 +287,6 @@ export default function VentesPage() {
             <button onClick={()=>setModal({})} style={{background:'var(--c-primary)',border:'none',color:'#fff',borderRadius:10,padding:'8px 18px',fontSize:13,fontWeight:700,cursor:'pointer'}}>+ Nouvelle vente</button>
           </div>
         </div>
-        {/* KPIs */}
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
           {[
             {label:'Total ventes',val:String(filtres.length),color:'var(--c-primary)'},
@@ -290,7 +310,6 @@ export default function VentesPage() {
       </div>
 
       {tab==='liste'&&(<>
-        {/* Filtres */}
         <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
           <input placeholder="🔍 Client..." value={search} onChange={e=>setSearch(e.target.value)} style={{...sF,width:200}}/>
           <select value={filterClient} onChange={e=>setFilterClient(e.target.value)} style={sF}><option value="">Tous clients</option>{clients?.map(c=><option key={c.id} value={c.id}>{c.nom}</option>)}</select>
@@ -299,11 +318,10 @@ export default function VentesPage() {
           {(search||filterClient||filterVille||filterStatut)&&<button onClick={()=>{setSearch('');setFilterClient('');setFilterVille('');setFilterStatut('');}} style={{background:'none',border:'1px solid var(--c-border)',color:'var(--c-text3)',borderRadius:8,padding:'7px 12px',fontSize:12,cursor:'pointer'}}>✕</button>}
         </div>
 
-        {/* Tableau */}
         <div style={{overflowX:'auto',border:'1px solid var(--c-border)',borderRadius:10}}>
           <table style={{width:'100%',borderCollapse:'collapse',minWidth:900}}>
             <thead><tr style={{background:'var(--c-bg2)'}}>
-              {['Date','Client','Quantité','Ville','Type','Origine (ferme)','Statut',''].map(h=><th key={h} style={{padding:'11px 10px',textAlign:'left',fontSize:10,fontWeight:700,color:'var(--c-text2)',textTransform:'uppercase',letterSpacing:'.5px',borderBottom:'1px solid var(--c-border)',whiteSpace:'nowrap'}}>{h}</th>)}
+              {['Date','Client','Quantité','Ville','Type','Origine','Statut','Actions'].map(h=><th key={h} style={{padding:'11px 10px',textAlign:'left',fontSize:10,fontWeight:700,color:'var(--c-text2)',textTransform:'uppercase',letterSpacing:'.5px',borderBottom:'1px solid var(--c-border)',whiteSpace:'nowrap'}}>{h}</th>)}
             </tr></thead>
             <tbody>
               {filtres.length===0&&<tr><td colSpan={8} style={{padding:40,textAlign:'center',color:'var(--c-text3)'}}>Aucune vente pour la campagne {campagneActive}</td></tr>}
@@ -318,8 +336,14 @@ export default function VentesPage() {
                   <td style={{padding:'10px 10px'}}><span style={{color:statutColor(v.statut),fontWeight:600,fontSize:12}}>{statutLabel(v.statut)}</span></td>
                   <td style={{padding:'10px 8px'}}>
                     <div style={{display:'flex',gap:4}}>
-                      <button onClick={()=>setModal(v)} style={{background:'rgba(79,142,247,.12)',border:'1px solid rgba(79,142,247,.25)',color:'var(--c-primary)',borderRadius:6,width:28,height:28,fontSize:13,cursor:'pointer'}}>✏</button>
-                      <button onClick={()=>handleDelete(v.id,v.client?.nom)} style={{background:'rgba(240,90,90,.12)',border:'1px solid rgba(240,90,90,.25)',color:'var(--c-danger)',borderRadius:6,width:28,height:28,fontSize:12,cursor:'pointer'}}>✕</button>
+                      <button onClick={()=>setModal(v)}
+                        style={{background:'rgba(79,142,247,.12)',border:'1px solid rgba(79,142,247,.25)',color:'var(--c-primary)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+                        ✏️ Modifier
+                      </button>
+                      <button onClick={()=>handleDelete(v.id,v.client?.nom)}
+                        style={{background:'rgba(240,90,90,.12)',border:'1px solid rgba(240,90,90,.25)',color:'var(--c-danger)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+                        🗑️ Suppr
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -330,7 +354,6 @@ export default function VentesPage() {
       </>)}
 
       {tab==='groupe'&&<TabGroupe clients={clients||[]} onSaved={loadVentes}/>}
-
       {modal!==null&&<ModalVente vente={modal?.id?modal:undefined} clients={clients||[]} onClose={()=>setModal(null)} onSaved={()=>{loadVentes();setModal(null);}}/>}
     </div>
   );
