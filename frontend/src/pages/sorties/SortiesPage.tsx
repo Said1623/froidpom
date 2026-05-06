@@ -35,7 +35,7 @@ export default function SortiePage() {
   const chambresAvecStock = useMemo(() => {
     if (!stockClient || !chambres) return [];
     return chambres.map(ch => {
-      const data = stockClient.parChambre?.[ch.id];
+      const data = stockClient.parChambre?.[String(ch.id)] ?? stockClient.parChambre?.[ch.id];
       const stock = type === 'bois' ? (data?.bois || 0) : type === 'plastique' ? (data?.plastique || 0) : (data?.tranger || 0);
       return { ...ch, stockType: stock };
     }).filter(ch => ch.stockType > 0);
