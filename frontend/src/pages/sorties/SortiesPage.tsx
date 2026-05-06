@@ -1,53 +1,62 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { sortiesApi, clientsApi, chambresApi, stockApi } from '../../services';
-import { Spinner } from '../../components/ui/UI';
 import type { Client, Chambre } from '../../types';
 import toast from 'react-hot-toast';
 import { useCampagne } from '../../contexts/CampagneContext';
 
 const TYPES = [
   { value: 'plastique', label: 'Plastique', icon: '🧴', color: '#4f8ef7', bg: 'rgba(79,142,247,.12)', border: 'rgba(79,142,247,.4)' },
-  { value: 'bois', label: 'Bois', icon: '🪵', color: '#f5a623', bg: 'rgba(245,166,35,.12)', border: 'rgba(245,166,35,.4)' },
-  { value: 'tranger', label: 'Étranger', icon: '📦', color: '#00d4b4', bg: 'rgba(0,212,180,.12)', border: 'rgba(0,212,180,.4)' },
+  { value: 'bois',      label: 'Bois',      icon: '🪵', color: '#f5a623', bg: 'rgba(245,166,35,.12)', border: 'rgba(245,166,35,.4)' },
+  { value: 'tranger',   label: 'Étranger',  icon: '📦', color: '#00d4b4', bg: 'rgba(0,212,180,.12)', border: 'rgba(0,212,180,.4)' },
 ];
 
 export default function SortiePage() {
   const { campagneActive } = useCampagne();
   const { data: clients } = useFetch<Client[]>(() => clientsApi.getAll(campagneActive), [campagneActive]);
   const { data: chambres, refetch: refetchChambres } = useFetch<Chambre[]>(() => chambresApi.getAll());
-  const { data: stockClients, refetch: refetchStock } = useFetch<any[]>(() => stockApi.getParClient());
 
   const [clientId, setClientId] = useState('');
   const [type, setType] = useState('plastique');
   const [chambreId, setChambreId] = useState('');
   const [quantite, setQuantite] = useState('');
   const [saving, setSaving] = useState(false);
+  const [stockDetail, setStockDetail] = useState<any>(null);
+  const [loadingStock, setLoadingStock] = useState(false);
 
-  // Stock du client par chambre
-  const stockClient = useMemo(() => {
-    if (!clientId || !stockClients) return null;
-    const cid = parseInt(clientId);
-    return stockClients.find(sc => sc.clientId === cid) || null;
-  }, [clientId, stockClients]);
+  // Charger le détail stock par type/chambre via getMouvementsClient
+  useEffect(() => {
+    if (!clientId) { setStockDetail(null); return; }
+    setLoadingStock(true);
+    stockApi.getMouvementsClient(parseInt(clientId))
+      .then(r => setStockDetail(r.data))
+      .catch(() => setStockDetail(null))
+      .finally(() => setLoadingStock(false));
+  }, [clientId]);
+
+  async function refetchStock() {
+    if (!clientId) return;
+    try {
+      const r = await stockApi.getMouvementsClient(parseInt(clientId));
+      setStockDetail(r.data);
+    } catch {}
+  }
 
   // Chambres où ce client a du stock pour le type sélectionné
   const chambresAvecStock = useMemo(() => {
-    if (!stockClient || !chambres) return [];
-    console.log('stockClient complet:', stockClient);
-    console.log('parChambre["2"]:', stockClient?.parChambre?.['2']);
-    console.log('type actuel:', type);
-    const pc = stockClient.parChambre || {};
+    if (!stockDetail || !chambres) return [];
+    // L'endpoint getMouvementsClient retourne stockParChambre ou parChambre
+    const pc = stockDetail.stockParChambre || stockDetail.parChambre || {};
     return chambres.map(ch => {
-      // Chercher avec string ET number
-      const data = pc[String(ch.id)] || pc[ch.id] || null;
-      if (!data) return { ...ch, stockType: 0 };
-      const stock = type === 'bois' ? (data.bois || 0)
-        : type === 'plastique' ? (data.plastique || 0)
-          : (data.tranger || 0);
+      const key = String(ch.id);
+      const data = pc[key] || pc[ch.id] || null;
+      const stock = !data ? 0
+        : type === 'bois' ? (data.bois || data.Bois || 0)
+        : type === 'plastique' ? (data.plastique || data.Plastique || 0)
+        : (data.tranger || data.Tranger || data.etranger || 0);
       return { ...ch, stockType: stock };
     }).filter(ch => ch.stockType > 0);
-  }, [stockClient, chambres, type]);
+  }, [stockDetail, chambres, type]);
 
   const chambreSelectionnee = chambresAvecStock.find(c => String(c.id) === chambreId);
   const stockDispo = chambreSelectionnee?.stockType || 0;
@@ -56,11 +65,19 @@ export default function SortiePage() {
   const canSave = clientId && chambreId && nb > 0 && !depasseStock;
   const typeActif = TYPES.find(t => t.value === type)!;
 
-  // Reset chambre si plus de stock pour ce type
-  if (chambreId && !chambresAvecStock.find(c => String(c.id) === chambreId)) {
-    setChambreId('');
-    setQuantite('');
-  }
+  // Stock total du client par chambre (affichage résumé)
+  const resumeParChambre = useMemo(() => {
+    if (!stockDetail || !chambres) return [];
+    const pc = stockDetail.stockParChambre || stockDetail.parChambre || {};
+    return chambres.map(ch => {
+      const data = pc[String(ch.id)] || pc[ch.id] || null;
+      if (!data) return null;
+      const total = (data.bois || 0) + (data.plastique || 0) + (data.tranger || 0)
+        || data.stock || data.total || 0;
+      if (total === 0) return null;
+      return { ch, data, total };
+    }).filter(Boolean) as { ch: Chambre; data: any; total: number }[];
+  }, [stockDetail, chambres]);
 
   async function handleValider() {
     if (!canSave) return;
@@ -112,25 +129,24 @@ export default function SortiePage() {
             {(clients || []).map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
           </select>
 
-          {/* Stock total client */}
-          {stockClient && (
+          {/* Résumé stock client */}
+          {loadingStock && <div style={{ marginTop: 10, fontSize: 12, color: 'var(--c-text3)' }}>Chargement stock...</div>}
+          {!loadingStock && resumeParChambre.length > 0 && (
             <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {Object.entries(stockClient.parChambre || {}).map(([chId, data]: [string, any]) => {
-                const ch = (chambres || []).find(c => c.id === parseInt(chId));
-                if (!ch || !data.stock) return null;
-                return (
-                  <div key={chId} style={{ background: 'var(--c-bg2)', border: '1px solid var(--c-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
-                    <div style={{ fontWeight: 700, color: 'var(--c-primary)', marginBottom: 3 }}>❄ {ch.nom}</div>
-                    {data.bois > 0 && <div style={{ color: '#f5a623' }}>🪵 {data.bois}</div>}
-                    {data.plastique > 0 && <div style={{ color: '#4f8ef7' }}>🧴 {data.plastique}</div>}
-                    {data.tranger > 0 && <div style={{ color: '#00d4b4' }}>📦 {data.tranger}</div>}
-                  </div>
-                );
-              })}
-              {Object.values(stockClient.parChambre || {}).every((d: any) => !d.stock) && (
-                <div style={{ fontSize: 12, color: 'var(--c-text3)', fontStyle: 'italic' }}>Aucun stock en chambre</div>
-              )}
+              {resumeParChambre.map(({ ch, data }) => (
+                <div key={ch.id} style={{ background: 'var(--c-bg2)', border: '1px solid var(--c-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--c-primary)', marginBottom: 3 }}>❄ {ch.nom}</div>
+                  {(data.bois || 0) > 0 && <div style={{ color: '#f5a623' }}>🪵 {data.bois}</div>}
+                  {(data.plastique || 0) > 0 && <div style={{ color: '#4f8ef7' }}>🧴 {data.plastique}</div>}
+                  {(data.tranger || 0) > 0 && <div style={{ color: '#00d4b4' }}>📦 {data.tranger}</div>}
+                  {!(data.bois || data.plastique || data.tranger) && data.stock > 0 &&
+                    <div style={{ color: 'var(--c-text2)' }}>📦 {data.stock} total</div>}
+                </div>
+              ))}
             </div>
+          )}
+          {!loadingStock && clientId && resumeParChambre.length === 0 && (
+            <div style={{ marginTop: 10, fontSize: 12, color: 'var(--c-text3)', fontStyle: 'italic' }}>Aucun stock en chambre pour ce client</div>
           )}
         </div>
 
@@ -154,7 +170,7 @@ export default function SortiePage() {
         </div>
 
         {/* 3. Chambre — seulement celles avec stock pour ce type */}
-        {clientId && (
+        {clientId && !loadingStock && (
           <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 14, padding: '18px 20px' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text3)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 12 }}>❄ Chambre source</div>
             {chambresAvecStock.length === 0 ? (
