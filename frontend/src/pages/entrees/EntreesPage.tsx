@@ -65,7 +65,8 @@ export default function EntreePage() {
     ? type === 'bois' ? clientData.resteB : type === 'plastique' ? clientData.resteP : clientData.resteT
     : 0;
   const depasseQuota = nb > quotaReste;
-  const depasseChambre = chambre ? nb > chambre.disponible : false;
+  const disponibleChambre = chambre ? (chambre.disponible ?? (chambre.capaciteMax - chambre.stockActuel)) : 0;
+  const depasseChambre = chambre ? nb > disponibleChambre : false;
   const canSave = clientId && chambreId && nb > 0 && !depasseQuota && !depasseChambre;
 
   async function handleValider() {
@@ -209,7 +210,7 @@ export default function EntreePage() {
               </div>
             )}
             {depasseQuota && nb > 0 && <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(240,90,90,.1)', border: '1px solid rgba(240,90,90,.3)', borderRadius: 8, fontSize: 13, color: 'var(--c-danger)', fontWeight: 600 }}>⚠ Dépasse le quota — max autorisé : {quotaReste}</div>}
-            {depasseChambre && !depasseQuota && nb > 0 && <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(240,90,90,.1)', border: '1px solid rgba(240,90,90,.3)', borderRadius: 8, fontSize: 13, color: 'var(--c-danger)', fontWeight: 600 }}>⚠ Chambre pleine — disponible : {chambre?.disponible}</div>}
+            {depasseChambre && !depasseQuota && nb > 0 && <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(240,90,90,.1)', border: '1px solid rgba(240,90,90,.3)', borderRadius: 8, fontSize: 13, color: 'var(--c-danger)', fontWeight: 600 }}>⚠ Chambre pleine — disponible : {disponibleChambre}</div>}
           </div>
 
           {/* 4. Chambre */}
@@ -218,19 +219,29 @@ export default function EntreePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(chambres || []).map(c => {
                 const pct = c.capaciteMax > 0 ? Math.round((c.stockActuel / c.capaciteMax) * 100) : 0;
-                const pleine = c.disponible === 0;
+                const disponible = c.disponible ?? (c.capaciteMax - c.stockActuel);
+                const pleine = disponible <= 0;
                 const selected = chambreId === String(c.id);
                 return (
                   <button key={c.id} onClick={() => !pleine && setChambreId(String(c.id))} disabled={pleine}
                     style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 10, cursor: pleine ? 'not-allowed' : 'pointer', transition: 'all .15s', textAlign: 'left', background: selected ? 'rgba(79,142,247,.1)' : pleine ? 'rgba(240,90,90,.04)' : 'var(--c-bg2)', border: `2px solid ${selected ? 'var(--c-primary)' : pleine ? 'rgba(240,90,90,.2)' : 'var(--c-border)'}`, opacity: pleine ? 0.6 : 1 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: selected ? 'rgba(79,142,247,.2)' : 'var(--c-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>❄</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: selected ? 'var(--c-primary)' : 'var(--c-text)' }}>{c.nom}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                        <div style={{ flex: 1, height: 4, background: 'var(--c-bg2)', borderRadius: 20, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: selected ? 'var(--c-primary)' : 'var(--c-text)' }}>{c.nom}</div>
+                        <div style={{ fontSize: 11, color: 'var(--c-text3)' }}>
+                          <span style={{ color: 'var(--c-warning)', fontWeight: 700 }}>{c.stockActuel}</span>
+                          <span style={{ margin: '0 4px' }}>/</span>
+                          <span>{c.capaciteMax}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                        <div style={{ flex: 1, height: 5, background: 'var(--c-bg2)', borderRadius: 20, overflow: 'hidden' }}>
                           <div style={{ height: '100%', borderRadius: 20, width: `${pct}%`, background: pct > 85 ? 'var(--c-danger)' : pct > 60 ? '#f5a623' : 'var(--c-success)' }} />
                         </div>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: pleine ? 'var(--c-danger)' : 'var(--c-success)', whiteSpace: 'nowrap' }}>{pleine ? '⚠ Pleine' : `${c.disponible} libre`}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: pleine ? 'var(--c-danger)' : 'var(--c-success)', whiteSpace: 'nowrap' }}>
+                          {pleine ? '⚠ Pleine' : `${disponible} libre`}
+                        </span>
                         <span style={{ fontSize: 11, color: 'var(--c-text3)' }}>{pct}%</span>
                       </div>
                     </div>
