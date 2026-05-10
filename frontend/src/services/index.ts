@@ -21,7 +21,7 @@ export const chambresApi = {
   create: (data: any) => api.post('/chambres', data),
   update: (id: number, data: any) => api.put(`/chambres/${id}`, data),
   delete: (id: number) => api.delete(`/chambres/${id}`),
-  recalculStocks: () => api.post('/chambres/recalcul-stocks'),
+ recalculStocks: () => api.post('/chambres/recalcul-stocks', {}),
 };
 
 export const clientsApi = {

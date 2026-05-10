@@ -13,6 +13,7 @@ const NAV = [
   { to: '/sorties', icon: '⬆', label: 'Sorties' },
   { to: '/paiements', icon: '💰', label: 'Paiements' },
   { to: '/historique-paiements', icon: '🧾', label: 'Historique Paiements' },
+  { to: '/comptabilite', icon: '📒', label: 'Comptabilité' },
   { to: '/locations', icon: '📦', label: 'Locations' },
   { to: '/stock', icon: '📊', label: 'Suivi Stock' },
   { to: '/ventes', icon: '🚚', label: 'Suivi Ventes' },

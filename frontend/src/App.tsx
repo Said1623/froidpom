@@ -14,6 +14,7 @@ import StockPage from './pages/stock/StockPage';
 import VentesPage from './pages/ventes/VentesPage';
 import HistoriquePaiementsPage from './pages/historique-paiements/HistoriquePaiementsPage';
 import ChambreVue3DPage from './pages/chambre-3d/ChambreVue3DPage';
+import ComptabilitePage from './pages/comptabilite/ComptabilitePage';
 
 function LoginPage() {
   async function handleLogin() {
@@ -100,6 +101,7 @@ function AppRoutes() {
         <Route path="stock" element={<StockPage />} />
         <Route path="ventes" element={<VentesPage />} />
         <Route path="chambre-3d" element={<ChambreVue3DPage />} />
+        <Route path="comptabilite" element={<ComptabilitePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
