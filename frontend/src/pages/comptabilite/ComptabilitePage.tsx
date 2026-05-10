@@ -1,4 +1,4 @@
-ximport { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useFetch } from '../../hooks/useFetch';
 import { dashboardApi } from '../../services';
@@ -390,23 +390,57 @@ export default function ComptabilitePage() {
   }, [charges]);
 
   function exportPDF() {
-    // Formatage sans espaces insécables (évite les '/' dans jsPDF)
-    const fmtPDF = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' MAD';
+    // Séparateur '.' pour les milliers (compatible jsPDF, pas d'espaces insécables)
+    const fmtPDF = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' MAD';
+    const isPositif = beneficeNet >= 0;
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.getWidth();
+    const H = 30;
 
-    // ── Header ──
-    doc.setFillColor(15, 22, 40); doc.rect(0, 0, W, 28, 'F');
+    // ── Header avec récapitulatif ──
+    doc.setFillColor(15, 22, 40); doc.rect(0, 0, W, H + 22, 'F');
+
+    // Logo + titre
     doc.setFontSize(18); doc.setTextColor(79, 142, 247); doc.setFont('helvetica', 'bold'); doc.text('FROIDPOM', 14, 14);
     doc.setFontSize(8); doc.setTextColor(90, 111, 148); doc.setFont('helvetica', 'normal'); doc.text('GESTION FRIGORIFIQUE', 14, 21);
-    doc.setFontSize(13); doc.setTextColor(232, 237, 248); doc.setFont('helvetica', 'bold'); doc.text(`COMPTABILITE - ${campagneActive}`, W - 14, 13, { align: 'right' });
-    doc.setFontSize(8); doc.setTextColor(90, 111, 148); doc.setFont('helvetica', 'normal'); doc.text(`Edite le ${new Date().toLocaleDateString('fr-FR')}`, W - 14, 21, { align: 'right' });
+    doc.setFontSize(13); doc.setTextColor(232, 237, 248); doc.setFont('helvetica', 'bold'); doc.text('COMPTABILITE - ' + campagneActive, W - 14, 12, { align: 'right' });
+    doc.setFontSize(8); doc.setTextColor(90, 111, 148); doc.setFont('helvetica', 'normal'); doc.text('Edite le ' + new Date().toLocaleDateString('fr-FR'), W - 14, 20, { align: 'right' });
+
+    // Ligne séparatrice
+    doc.setDrawColor(30, 74, 110); doc.setLineWidth(0.3); doc.line(14, 26, W - 14, 26);
+
+    // 3 blocs récapitulatifs dans le header
+    const col1 = 14, col2 = W / 3 + 10, col3 = (W / 3) * 2 + 6;
+    const rowY = 36;
+
+    // Bloc 1 — Revenus encaissés (vert)
+    doc.setFillColor(20, 50, 35); doc.roundedRect(col1, 29, W/3 - 8, 18, 2, 2, 'F');
+    doc.setFontSize(7); doc.setTextColor(46, 207, 138); doc.setFont('helvetica', 'bold');
+    doc.text('REVENUS ENCAISSES', col1 + 4, 34);
+    doc.setFontSize(12); doc.setTextColor(46, 207, 138);
+    doc.text(fmtPDF(totalRevenus), col1 + 4, 42);
+
+    // Bloc 2 — Total frais (rouge)
+    doc.setFillColor(50, 20, 20); doc.roundedRect(col2, 29, W/3 - 8, 18, 2, 2, 'F');
+    doc.setFontSize(7); doc.setTextColor(240, 90, 90); doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL FRAIS', col2 + 4, 34);
+    doc.setFontSize(12); doc.setTextColor(240, 90, 90);
+    doc.text(fmtPDF(totalDu), col2 + 4, 42);
+
+    // Bloc 3 — Reste net (vert ou rouge)
+    const bCol: [number,number,number] = isPositif ? [20, 50, 35] : [50, 20, 20];
+    doc.setFillColor(...bCol); doc.roundedRect(col3, 29, W/3 - 8, 18, 2, 2, 'F');
+    doc.setFontSize(7); doc.setTextColor(232, 237, 248); doc.setFont('helvetica', 'bold');
+    doc.text(isPositif ? 'BENEFICE NET' : 'DEFICIT', col3 + 4, 34);
+    doc.setFontSize(12);
+    doc.setTextColor(...(isPositif ? [46, 207, 138] as [number,number,number] : [240, 90, 90] as [number,number,number]));
+    doc.text((isPositif ? '+' : '-') + fmtPDF(Math.abs(beneficeNet)), col3 + 4, 42);
 
     // ── Revenus ──
-    doc.setFontSize(11); doc.setTextColor(46, 207, 138); doc.setFont('helvetica', 'bold'); doc.text('REVENUS ENCAISSES', 14, 38);
+    doc.setFontSize(11); doc.setTextColor(46, 207, 138); doc.setFont('helvetica', 'bold'); doc.text('REVENUS ENCAISSES', 14, 56);
     autoTable(doc, {
-      startY: 42,
+      startY: 60,
       head: [['Source', 'Montant']],
       body: [
         ['Paiements reservations', fmtPDF(revenusPaiements)],
@@ -481,7 +515,6 @@ export default function ComptabilitePage() {
 
     // ── Bénéfice net ──
     const y3 = (doc as any).lastAutoTable.finalY + 10;
-    const isPositif = beneficeNet >= 0;
     autoTable(doc, {
       startY: y3,
       body: [[
