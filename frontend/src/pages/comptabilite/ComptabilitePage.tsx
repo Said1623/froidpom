@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+ximport { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useFetch } from '../../hooks/useFetch';
 import { dashboardApi } from '../../services';
@@ -390,19 +390,114 @@ export default function ComptabilitePage() {
   }, [charges]);
 
   function exportPDF() {
+    // Formatage sans espaces insécables (évite les '/' dans jsPDF)
+    const fmtPDF = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' MAD';
+
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.getWidth();
+
+    // ── Header ──
     doc.setFillColor(15, 22, 40); doc.rect(0, 0, W, 28, 'F');
     doc.setFontSize(18); doc.setTextColor(79, 142, 247); doc.setFont('helvetica', 'bold'); doc.text('FROIDPOM', 14, 14);
-    doc.setFontSize(11); doc.setTextColor(232, 237, 248); doc.text(`COMPTABILITÉ — ${campagneActive}`, W - 14, 14, { align: 'right' });
-    doc.setFontSize(8); doc.setTextColor(90, 111, 148); doc.text(`Édité le ${new Date().toLocaleDateString('fr-FR')}`, W - 14, 22, { align: 'right' });
-    // Revenus
-    doc.setFontSize(11); doc.setTextColor(46, 207, 138); doc.setFont('helvetica', 'bold'); doc.text('REVENUS ENCAISSÉS', 14, 38);
-    autoTable(doc, { startY: 42, head: [['Source', 'Montant (MAD)']], body: [['Paiements réservations', `${fmt(revenusPaiements)} MAD`], ['Locations caisses', `${fmt(revenusLocations)} MAD`], ['TOTAL REVENUS', `${fmt(totalRevenus)} MAD`]], styles: { fontSize: 9 }, headStyles: { fillColor: [15, 22, 40] }, margin: { left: 14, right: 14 } });
-    // Charges
-    const y = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(11); doc.setTextColor(240, 90, 90); doc.setFont('helvetica', 'bold'); doc.text('CHARGES', 14, y);
-    autoTable(doc, { startY: y + 4, head: [['Libellé', 'Catégorie', 'Total dû', 'Payé', 'Reste', 'Statut']], body: charges.map(c => [c.libelle, c.categorie, `${fmt(c.montantTotal)} MAD`, `${fmt(c.totalPaye)} MAD`, `${fmt(c.resteAPayer)} MAD`, c.statut === 'solde' ? 'Soldé' : c.statut === 'partiel' ? 'Partiel' : 'Impayé']), styles: { fontSize: 8 }, headStyles: { fillColor: [15, 22, 40] }, margin: { left: 14, right: 14 } });
+    doc.setFontSize(8); doc.setTextColor(90, 111, 148); doc.setFont('helvetica', 'normal'); doc.text('GESTION FRIGORIFIQUE', 14, 21);
+    doc.setFontSize(13); doc.setTextColor(232, 237, 248); doc.setFont('helvetica', 'bold'); doc.text(`COMPTABILITE - ${campagneActive}`, W - 14, 13, { align: 'right' });
+    doc.setFontSize(8); doc.setTextColor(90, 111, 148); doc.setFont('helvetica', 'normal'); doc.text(`Edite le ${new Date().toLocaleDateString('fr-FR')}`, W - 14, 21, { align: 'right' });
+
+    // ── Revenus ──
+    doc.setFontSize(11); doc.setTextColor(46, 207, 138); doc.setFont('helvetica', 'bold'); doc.text('REVENUS ENCAISSES', 14, 38);
+    autoTable(doc, {
+      startY: 42,
+      head: [['Source', 'Montant']],
+      body: [
+        ['Paiements reservations', fmtPDF(revenusPaiements)],
+        ['Locations caisses', fmtPDF(revenusLocations)],
+        ['Ventes marchandise', fmtPDF(revenusVentes)],
+        ['TOTAL ENCAISSE', fmtPDF(totalRevenus)],
+      ],
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [15, 22, 40], textColor: [232, 237, 248], fontStyle: 'bold' },
+      bodyStyles: { textColor: [40, 40, 40] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        if (data.row.index === 3) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [220, 250, 235];
+          data.cell.styles.textColor = [20, 160, 100];
+        }
+      },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60, halign: 'right' } },
+    });
+
+    // ── Charges ──
+    const y1 = (doc as any).lastAutoTable.finalY + 12;
+    doc.setFontSize(11); doc.setTextColor(240, 90, 90); doc.setFont('helvetica', 'bold'); doc.text('DETAIL DES CHARGES', 14, y1);
+    autoTable(doc, {
+      startY: y1 + 4,
+      head: [['Libelle', 'Categorie', 'Periodicite', 'Total du', 'Paye', 'Reste a payer', 'Statut']],
+      body: charges.map(c => [
+        c.libelle,
+        CATEGORIES.find(x => x.value === c.categorie)?.label || c.categorie,
+        c.periodicite,
+        fmtPDF(c.montantTotal),
+        fmtPDF(c.totalPaye),
+        fmtPDF(c.resteAPayer),
+        c.statut === 'solde' ? 'Solde' : c.statut === 'partiel' ? 'Partiel' : 'Impaye',
+      ]),
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [15, 22, 40], textColor: [232, 237, 248], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        if (data.column.index === 6 && data.section === 'body') {
+          const val = data.cell.raw as string;
+          if (val === 'Solde') { data.cell.styles.textColor = [20, 160, 100]; data.cell.styles.fontStyle = 'bold'; }
+          else if (val === 'Partiel') { data.cell.styles.textColor = [200, 130, 0]; data.cell.styles.fontStyle = 'bold'; }
+          else { data.cell.styles.textColor = [220, 60, 60]; data.cell.styles.fontStyle = 'bold'; }
+        }
+      },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 70 }, 1: { cellWidth: 35 }, 2: { cellWidth: 25 },
+        3: { cellWidth: 35, halign: 'right' }, 4: { cellWidth: 35, halign: 'right' },
+        5: { cellWidth: 35, halign: 'right' }, 6: { cellWidth: 22, halign: 'center' },
+      },
+    });
+
+    // ── Totaux charges ──
+    const y2 = (doc as any).lastAutoTable.finalY + 10;
+    autoTable(doc, {
+      startY: y2,
+      head: [['', 'Total du', 'Total paye', 'Reste a payer']],
+      body: [['TOTAL CHARGES', fmtPDF(totalDu), fmtPDF(totalPaye), fmtPDF(resteAPayer)]],
+      styles: { fontSize: 9, fontStyle: 'bold', cellPadding: 4 },
+      headStyles: { fillColor: [40, 40, 60], textColor: [200, 200, 220] },
+      bodyStyles: { fillColor: [250, 240, 240], textColor: [40, 40, 40] },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 80 }, 1: { cellWidth: 50, halign: 'right' },
+        2: { cellWidth: 50, halign: 'right' }, 3: { cellWidth: 50, halign: 'right' },
+      },
+    });
+
+    // ── Bénéfice net ──
+    const y3 = (doc as any).lastAutoTable.finalY + 10;
+    const isPositif = beneficeNet >= 0;
+    autoTable(doc, {
+      startY: y3,
+      body: [[
+        isPositif ? 'BENEFICE NET' : 'DEFICIT',
+        `Revenus (${fmtPDF(totalRevenus)}) - Charges (${fmtPDF(totalDu)})`,
+        `${isPositif ? '+' : '-'}${fmtPDF(Math.abs(beneficeNet))}`,
+      ]],
+      styles: { fontSize: 11, fontStyle: 'bold', cellPadding: 6 },
+      bodyStyles: {
+        fillColor: isPositif ? [220, 250, 235] : [255, 235, 235],
+        textColor: isPositif ? [20, 140, 80] : [200, 50, 50],
+      },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 140 }, 2: { cellWidth: 60, halign: 'right' } },
+    });
+
     doc.save(`froidpom-comptabilite-${campagneActive}.pdf`);
   }
 
